@@ -12,6 +12,7 @@ repositories {
 }
 
 val ktorVersion = "3.5.2"
+val koogVersion = "1.2.0"
 
 dependencies {
     // Ktor server
@@ -21,10 +22,9 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
-    // Ktor client (calls the DeepSeek API)
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    // Koog (JetBrains' AI framework) — DeepSeek interaction
+    implementation("ai.koog:koog-agents:$koogVersion")
+    implementation("ai.koog:prompt-executor-deepseek-client:$koogVersion-beta")
 
     // JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
@@ -34,7 +34,6 @@ dependencies {
 
     // Tests
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
-    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation(kotlin("test-junit5"))
 }
 

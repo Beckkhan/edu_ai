@@ -1,9 +1,9 @@
 # edu-ai — DeepSeek "First API Call" service
 
-A small Kotlin service built with **Ktor** that wraps the DeepSeek
+A small Kotlin service built with **Ktor** and **Koog** that wraps the DeepSeek
 [First API Call](https://api-docs.deepseek.com/) behind a local HTTP API.
-You send a request to the local API; the service calls DeepSeek's
-`chat/completions` endpoint and returns the response.
+You send a request to the local API; the service runs a Koog prompt against
+DeepSeek's `chat/completions` endpoint and returns the response.
 
 ## Stack
 
@@ -11,9 +11,10 @@ You send a request to the local API; the service calls DeepSeek's
 |-------------|---------|
 | Kotlin      | 2.4.20  |
 | Ktor        | 3.5.2   |
+| [Koog](https://docs.koog.ai/) (JetBrains' AI framework) | 1.2.0 (`prompt-executor-deepseek-client` is `1.2.0-beta`) |
 | kotlinx.serialization | 1.11.0 |
 | Gradle      | 9.7.0 (wrapper) |
-| Tests       | JUnit 5 (kotlin-test) + Ktor MockEngine |
+| Tests       | JUnit 5 (kotlin-test) + Ktor test host |
 
 ## Prerequisites
 
@@ -75,17 +76,33 @@ a clear message.
 The app reads a `.env` file from the working directory automatically
 (see `.env.example`); environment variables take precedence.
 
+## How the Koog integration works
+
+- `Application.kt` builds a Koog `DeepSeekLLMClient` (API key, base URL,
+  timeouts) and wraps it in a `MultiLLMPromptExecutor`.
+- Per request, `KoogChatService` builds a Koog `Prompt` — a system message
+  plus the user prompt, with DeepSeek thinking enabled
+  (`thinking: {"type": "enabled"}`, `reasoning_effort: "high"` — the same
+  parameters the old raw HTTP client sent) — and calls `executor.execute()`.
+- The resulting `Message.Assistant` is mapped onto the local API response:
+  `textContent()` → `response`, `MessagePart.Reasoning` → `reasoning`,
+  `metaInfo` token counts → `usage`, `finishReason` → `finish_reason`.
+- Koog failures (`KoogHttpClientException`, `LLMClientException`) are
+  translated to `DeepSeekApiException` so the Ktor `StatusPages` mapping
+  stays unchanged.
+
 ## Tests
 
 ```bash
 ./gradlew test
 ```
 
-All tests run **without an API key** — the DeepSeek backend is mocked with
-Ktor's `MockEngine`. They cover:
+All tests run **without an API key** — the chat backend is faked with a
+`ChatService`/`PromptExecutor` stub, no network. They cover:
 
-- `DeepSeekClientTest` — request shape (URL, `Authorization` header, body
-  matching the docs' example), response parsing, error mapping, missing key
+- `KoogChatServiceTest` — prompt shape (system + user messages, thinking and
+  `reasoning_effort` params, model), response mapping (text, reasoning,
+  usage, finish reason), error translation, model resolution, missing key
 - `ChatRoutesTest` — the local API: happy path, DeepSeek 401 mapping,
   missing key, blank prompt, malformed JSON
 
@@ -101,13 +118,13 @@ Skipped automatically when the key is not set.
 
 ```
 src/main/kotlin/com/eduai/
-  Application.kt          — entry point: Netty server on PORT
+  Application.kt          — entry point: Koog client + Netty server on PORT
   config/AppConfig.kt     — env-var configuration
-  model/ChatModels.kt     — DeepSeek + local API DTOs
-  service/DeepSeekClient.kt — chat/completions client
+  model/ChatModels.kt     — local API DTOs
+  service/KoogChatService.kt — Koog prompt executor wrapper (ChatService)
   routes/ChatRoutes.kt    — GET /health, POST /api/chat, error mapping
 src/test/kotlin/com/eduai/
-  service/DeepSeekClientTest.kt
+  service/KoogChatServiceTest.kt
   routes/ChatRoutesTest.kt
   LiveDeepSeekTest.kt     — real call, opt-in via DEEPSEEK_API_KEY
 ```

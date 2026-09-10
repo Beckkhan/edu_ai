@@ -1,21 +1,19 @@
 package com.eduai
 
+import ai.koog.prompt.executor.clients.ConnectionTimeoutConfig
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekClientSettings
+import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
+import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import com.eduai.config.AppConfig
-import com.eduai.service.DeepSeekClient
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
+import com.eduai.service.KoogChatService
+import com.eduai.service.resolveModel
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.Test
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * Makes a REAL call to the DeepSeek API ("First API Call" from the docs).
+ * Makes a REAL call to the DeepSeek API ("First API Call" from the docs) through Koog.
  *
  * Skipped by default. Run it with a real key:
  *   DEEPSEEK_API_KEY=sk-... ./gradlew test --tests "com.eduai.LiveDeepSeekTest"
@@ -29,25 +27,25 @@ class LiveDeepSeekTest {
             !config.apiKey.isNullOrBlank(),
             "DEEPSEEK_API_KEY is not set (env or .env) — skipping the live test",
         )
-        val httpClient = HttpClient(CIO) {
-            expectSuccess = false
-            install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true })
-            }
-            install(HttpTimeout) {
-                connectTimeoutMillis = 15_000
-                requestTimeoutMillis = 180_000
-                socketTimeoutMillis = 180_000
-            }
-        }
+        val client = DeepSeekLLMClient(
+            apiKey = config.requireApiKey(),
+            settings = DeepSeekClientSettings(
+                baseUrl = config.baseUrl,
+                timeoutConfig = ConnectionTimeoutConfig(
+                    connectTimeoutMillis = 15_000,
+                    requestTimeoutMillis = 180_000,
+                    socketTimeoutMillis = 180_000,
+                ),
+            ),
+        )
+        val executor = MultiLLMPromptExecutor(listOf(client))
         try {
-            val response = DeepSeekClient(httpClient, config).chat("Hello!")
-            val content = response.choices.firstOrNull()?.message?.content
-            assertNotNull(content, "expected assistant content in response: $response")
-            assertTrue(content.isNotBlank(), "expected non-blank assistant content")
-            println("DeepSeek reply: $content")
+            val response = KoogChatService(executor, config, resolveModel(config.model)).chat("Hello!")
+            assertTrue(response.response.isNotBlank(), "expected non-blank assistant content")
+            println("DeepSeek reply: ${response.response}")
+            response.reasoning?.let { println("DeepSeek reasoning: ${it.take(200)}…") }
         } finally {
-            httpClient.close()
+            executor.close()
         }
     }
 }

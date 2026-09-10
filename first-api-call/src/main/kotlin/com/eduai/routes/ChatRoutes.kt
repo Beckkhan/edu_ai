@@ -1,14 +1,11 @@
 package com.eduai.routes
 
-import com.eduai.config.AppConfig
 import com.eduai.config.MissingApiKeyException
-import com.eduai.model.DeepSeekChatResponse
 import com.eduai.model.ErrorResponse
 import com.eduai.model.HealthResponse
 import com.eduai.model.LocalChatRequest
-import com.eduai.model.LocalChatResponse
+import com.eduai.service.ChatService
 import com.eduai.service.DeepSeekApiException
-import com.eduai.service.DeepSeekClient
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.ContentConvertException
 import io.ktor.serialization.kotlinx.json.json
@@ -27,7 +24,7 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-fun Application.chatRoutes(deepSeekClient: DeepSeekClient, config: AppConfig) {
+fun Application.chatRoutes(chatService: ChatService) {
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
@@ -82,22 +79,7 @@ fun Application.chatRoutes(deepSeekClient: DeepSeekClient, config: AppConfig) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("'prompt' must not be blank"))
                 return@post
             }
-            val deepSeekResponse = deepSeekClient.chat(request.prompt)
-            call.respond(deepSeekResponse.toLocalChatResponse())
+            call.respond(chatService.chat(request.prompt))
         }
     }
-}
-
-private fun DeepSeekChatResponse.toLocalChatResponse(): LocalChatResponse {
-    val choice = choices.firstOrNull()
-        ?: throw DeepSeekApiException("DeepSeek API returned no choices", 502)
-    val content = choice.message?.content
-        ?: throw DeepSeekApiException("DeepSeek API returned an empty message", 502)
-    return LocalChatResponse(
-        response = content,
-        reasoning = choice.message.reasoningContent,
-        model = model,
-        usage = usage,
-        finishReason = choice.finishReason,
-    )
 }

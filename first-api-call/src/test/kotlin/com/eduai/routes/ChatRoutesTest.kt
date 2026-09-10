@@ -1,56 +1,44 @@
 package com.eduai.routes
 
-import com.eduai.config.AppConfig
-import com.eduai.service.DeepSeekClient
+import com.eduai.config.MissingApiKeyException
+import com.eduai.model.LocalChatResponse
+import com.eduai.model.Usage
+import com.eduai.service.ChatService
+import com.eduai.service.DeepSeekApiException
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.http.headersOf
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-private val deepSeekOkJson = """
-{
-  "model": "deepseek-v4-pro",
-  "choices": [
-    {
-      "finish_reason": "stop",
-      "message": {
-        "role": "assistant",
-        "content": "Hi there! I am DeepSeek.",
-        "reasoning_content": "A friendly reply."
-      }
-    }
-  ],
-  "usage": { "prompt_tokens": 9, "completion_tokens": 6, "total_tokens": 15 }
-}
-""".trimIndent()
+private val okResponse = LocalChatResponse(
+    response = "Hi there! I am DeepSeek.",
+    reasoning = "A friendly reply.",
+    model = "deepseek-v4-pro",
+    usage = Usage(promptTokens = 9, completionTokens = 6, totalTokens = 15),
+    finishReason = "stop",
+)
 
-/** Builds the app under test with a mocked DeepSeek backend. */
-private fun ApplicationTestBuilder.installApp(apiKey: String?, engine: MockEngine) {
-    val httpClient = HttpClient(engine) {
-        install(ContentNegotiation) {
-            // Matches production: send explicit defaults (thinking, reasoning_effort, stream)
-            json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
-        }
+/** A [ChatService] fake: the DeepSeek backend is simulated, no key or network needed. */
+private fun fakeChatService(behavior: suspend (String) -> LocalChatResponse): ChatService =
+    object : ChatService {
+        override suspend fun chat(prompt: String): LocalChatResponse = behavior(prompt)
     }
-    val config = AppConfig(apiKey = apiKey, baseUrl = "https://api.deepseek.com", model = "deepseek-v4-pro")
+
+/** Fails the test if the chat backend is actually called. */
+private val neverCalled: suspend (String) -> LocalChatResponse = { error("chat service must not be called") }
+
+private fun ApplicationTestBuilder.installApp(service: ChatService) {
     application {
-        chatRoutes(DeepSeekClient(httpClient, config), config)
+        chatRoutes(service)
     }
 }
 
@@ -63,7 +51,7 @@ class ChatRoutesTest {
 
     @Test
     fun `health endpoint returns ok`() = testApplication {
-        installApp(apiKey = "test-key", engine = MockEngine { respond("") })
+        installApp(fakeChatService(neverCalled))
 
         val response = client.get("/health")
         assertEquals(HttpStatusCode.OK, response.status)
@@ -72,12 +60,7 @@ class ChatRoutesTest {
 
     @Test
     fun `POST api chat returns the DeepSeek response`() = testApplication {
-        installApp(
-            apiKey = "test-key",
-            engine = MockEngine {
-                respond(deepSeekOkJson, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
-            },
-        )
+        installApp(fakeChatService { okResponse })
 
         val response = client.postChat("""{"prompt": "Hello!"}""")
 
@@ -93,10 +76,8 @@ class ChatRoutesTest {
     @Test
     fun `DeepSeek auth failure is mapped to 401`() = testApplication {
         installApp(
-            apiKey = "test-key",
-            engine = MockEngine {
-                respond("""{"error": "invalid api key"}""", HttpStatusCode.Unauthorized,
-                    headersOf(HttpHeaders.ContentType, "application/json"))
+            fakeChatService {
+                throw DeepSeekApiException("DeepSeek API returned 401: {\"error\": \"invalid api key\"}", 401)
             },
         )
 
@@ -108,7 +89,11 @@ class ChatRoutesTest {
 
     @Test
     fun `missing API key returns 500 with a clear message`() = testApplication {
-        installApp(apiKey = null, engine = MockEngine { respond(deepSeekOkJson, HttpStatusCode.OK) })
+        installApp(
+            fakeChatService {
+                throw MissingApiKeyException("DEEPSEEK_API_KEY is not set. Get a key at https://platform.deepseek.com")
+            },
+        )
 
         val response = client.postChat("""{"prompt": "Hello!"}""")
 
@@ -118,7 +103,7 @@ class ChatRoutesTest {
 
     @Test
     fun `blank prompt returns 400`() = testApplication {
-        installApp(apiKey = "test-key", engine = MockEngine { respond(deepSeekOkJson, HttpStatusCode.OK) })
+        installApp(fakeChatService(neverCalled))
 
         val response = client.postChat("""{"prompt": "   "}""")
 
@@ -127,7 +112,7 @@ class ChatRoutesTest {
 
     @Test
     fun `malformed request body returns 400`() = testApplication {
-        installApp(apiKey = "test-key", engine = MockEngine { respond(deepSeekOkJson, HttpStatusCode.OK) })
+        installApp(fakeChatService(neverCalled))
 
         val response = client.postChat("""not json at all""")
 
