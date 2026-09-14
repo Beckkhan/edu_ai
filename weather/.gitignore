@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Gradle
+.gradle/
+.kotlin/
+build/
+
+# Runtime artifacts
+chat_history.txt
+
+# macOS
+.DS_Store
