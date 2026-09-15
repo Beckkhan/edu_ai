@@ -11,6 +11,7 @@ version = "0.1.0"
 repositories { mavenCentral() }
 
 val ktorVersion = "3.5.2"
+val koogVersion = "1.2.0"
 
 dependencies {
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -18,7 +19,12 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-client-logging:$ktorVersion")
+
+    // Koog (JetBrains' AI framework) — DeepSeek interaction
+    implementation("ai.koog:koog-agents:$koogVersion")
+    implementation("ai.koog:prompt-executor-deepseek-client:$koogVersion-beta")
+    implementation("ai.koog:http-client-ktor:$koogVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("com.zaxxer:HikariCP:6.2.1")
     implementation("org.postgresql:postgresql:42.7.7")
