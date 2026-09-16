@@ -57,3 +57,12 @@ Order encodes dependencies; `deps:` notes are listed only where order alone is a
 - [x] T13 | owner: QualityTeam/reviewer | artifact: final scenario run (Bruno request against the running app) | status: done | verified: ok
   - deps: T5, T6, T7, T9, T10, T11, T12
   - acceptance: one Bruno request produces exactly five log lines with json bodies (R2); the outgoing DeepSeek request shows a non-empty tools array (R4); a weather request inserts a weather_log row with received_at matching the DeepSeek response timestamp (±1s, R3); harness folder with commands/agents/skills and skill-vs-agent rationale exists (R5); docs/project-specification.md and docs/tasks.md exist and were created by SpecificationTeam (R6)
+
+- [x] T14 | owner: DevelopmentTeam/logging-engineer | artifact: src/main/kotlin/com/eduai/weather/logging/RequestLogger.kt, src/main/resources/logback.xml | status: done | verified: ok
+  - note: logback 1.6.3 forbids two appenders on one file (FileCollisionAnalyser) — FILE (%msg%n) is attached to the R2 logger only, per D8 "dedicated logs/weather.log"
+  - acceptance: R2 events in the new multi-line format; logs/weather.log is created and contains the events; console shows the same events without a duplicated prefix; secrets remain redacted; noisy libraries at WARN
+  - deps: -
+
+- [x] T15 | owner: QualityTeam/unit-test-engineer | artifact: src/test/kotlin/com/eduai/weather/logging/RequestLoggerTest.kt | status: done | verified: ok
+  - acceptance: tests assert the event-based format (label line + parseable pretty JSON), secret redaction preserved; full test suite green
+  - deps: T14

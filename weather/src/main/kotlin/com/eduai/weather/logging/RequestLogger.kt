@@ -1,13 +1,15 @@
 // src/main/kotlin/com/eduai/weather/logging/RequestLogger.kt
 package com.eduai.weather.logging
 
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * R2 logging contract (docs/project-specification.md, contract 5a): one Bruno request
- * round-trip produces exactly five lines, each "<date/time> <label>: <json body>".
+ * R2 logging contract (docs/project-specification.md, contract 5a). An event is multi-line:
+ * a label line "<date/time> <label>:" followed by the body as pretty-printed JSON (2-space
+ * indent). Events are counted by label lines — grepping one label yields one event per request.
  */
 interface RequestLogger {
     fun brunoRequest(json: String)
@@ -24,14 +26,14 @@ class Slf4jRequestLogger(
 
     private val log = LoggerFactory.getLogger(loggerName)
 
-    override fun brunoRequest(json: String) = line(LABEL_BRUNO_REQUEST, json)
-    override fun deepSeekRequest(json: String) = line(LABEL_DEEPSEEK_REQUEST, json)
-    override fun deepSeekResponse(json: String) = line(LABEL_DEEPSEEK_RESPONSE, json)
-    override fun toolCall(json: String) = line(LABEL_TOOL_CALL, json)
-    override fun brunoResponse(json: String) = line(LABEL_BRUNO_RESPONSE, json)
+    override fun brunoRequest(json: String) = emit(LABEL_BRUNO_REQUEST, json)
+    override fun deepSeekRequest(json: String) = emit(LABEL_DEEPSEEK_REQUEST, json)
+    override fun deepSeekResponse(json: String) = emit(LABEL_DEEPSEEK_RESPONSE, json)
+    override fun toolCall(json: String) = emit(LABEL_TOOL_CALL, json)
+    override fun brunoResponse(json: String) = emit(LABEL_BRUNO_RESPONSE, json)
 
-    private fun line(label: String, json: String) {
-        log.info(formatLine(LocalDateTime.now().format(DATE_TIME), label, json))
+    private fun emit(label: String, json: String) {
+        log.info(formatEvent(LocalDateTime.now().format(DATE_TIME), label, json))
     }
 
     companion object {
@@ -42,10 +44,16 @@ class Slf4jRequestLogger(
         const val LABEL_BRUNO_RESPONSE = "Response to Bruno"
 
         private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        private val prettyJson = Json { prettyPrint = true; prettyPrintIndent = "  " }
 
-        /** R2 line: "<date/time> <label>: <json body>". */
-        internal fun formatLine(dateTime: String, label: String, json: String): String =
-            "$dateTime $label: ${redact(json)}"
+        /**
+         * R2 event (5a): label line "<date/time> <label>:" plus the redacted body as
+         * pretty-printed JSON on the following lines. One event = one label line.
+         */
+        internal fun formatEvent(dateTime: String, label: String, json: String): String =
+            "$dateTime $label:\n" + prettyJson.encodeToString(
+                prettyJson.parseToJsonElement(redact(json))
+            )
 
         /** Masks secret values (API keys, Authorization headers) before anything is written. */
         internal fun redact(json: String): String =

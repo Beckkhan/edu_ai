@@ -126,15 +126,20 @@ to koog-engineer; api-client-engineer is **re-scoped, not retired**.
 
 ### 5a. R2 log format and logger interface
 
-Line format (date/time = ISO-8601 local):
+An R2 event is multi-line (date/time = ISO-8601 local):
 
 ```
-<date/time> Request from Bruno to backend: <json body>
-<date/time> Request to Deepseek: <json body>
-<date/time> Response from Deepseek: <json body>
-<date/time> Tool call: <json body>            (only if a tool is actually used)
-<date/time> Response to Bruno: <json body>
+<date/time> Request from Bruno to backend:
+{
+  "prompt": "..."
+}
 ```
+
+- First line: `<date/time> <label>:` — the label line. Events are counted by label
+  lines: grepping one label yields exactly one event per request.
+- The body follows as pretty-printed JSON (2-space indent) on the following lines.
+- The single-line variant is no longer normative.
+- Tool call events appear only when a tool is actually used for the request.
 
 ```kotlin
 interface RequestLogger {
@@ -145,6 +150,16 @@ interface RequestLogger {
     fun brunoResponse(json: String)
 }
 ```
+
+#### Logging configuration
+
+`src/main/resources/logback.xml`:
+
+- FILE appender: `logs/weather.log`, daily rotation, maxHistory 7
+- CONSOLE appender
+- The R2 logger uses pattern `%msg%n` — the event already carries its own date/time
+  and label, so there is no duplicated prefix
+- Root level INFO; `com.zaxxer.hikari`, `io.netty`, `io.ktor` at WARN
 
 ### 5b. resources/tools/save_weather.json
 
@@ -244,3 +259,10 @@ duplicating state inside Koog's session creates two sources of truth and violate
 statelessness (5d).
 Alternatives considered: (a) use Koog's session — duplicated state, drift risk;
 (b) skip history entirely — loses dialogue context.
+
+**D8 — Multi-line human-readable R2 events + dedicated logs/weather.log file.**
+Decision: R2 events become multi-line (label line + pretty-printed JSON) and land in
+the dedicated logs/weather.log file.
+Why: the stakeholder reads logs manually; single-line JSON is unreadable.
+Alternatives considered: (a) single-line JSON + external jq viewer (file logs stay
+unreadable); (b) a duplicate human-readable log (two sources of truth, drift risk).
