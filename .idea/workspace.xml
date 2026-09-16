@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d720e975-ead7-4bdf-a674-78b801962662" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/weather/agents/design/architect/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/architect/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/design/skill-designer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/skill-designer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/design/task-planner/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/task-planner/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/api-client-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/api-client-engineer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/core-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/core-engineer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/data-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/data-engineer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/testing/integration-test-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/integration-test-engineer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/testing/test-architect/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/test-architect/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/weather/agents/testing/unit-test-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/unit-test-engineer/skill.md" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DatabaseLocalColorSettings">
+    <colors>
+      <entry key="45349005-c5d7-4542-b2c3-339ebaede624" value="" />
+    </colors>
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$/../cces/emulators">
+      <ProjectState />
+    </projectState>
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+    <projectState path="$PROJECT_DIR$/first-api-call">
+      <ProjectState />
+    </projectState>
+    <projectState path="$PROJECT_DIR$/weather">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <task path="$PROJECT_DIR$">
+          <activation />
+        </task>
+        <task path="$PROJECT_DIR$/first-api-call">
+          <activation />
+        </task>
+        <task path="$PROJECT_DIR$/weather">
+          <activation />
+        </task>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="weather" type="f1a62948:ProjectNode" />
+              </path>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="weather" type="f1a62948:ProjectNode" />
+                <item name="Tasks" type="e4a08cd1:TasksNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Beckkhan"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Beckkhan/edu_ai.git",
+    "accountId": "31d0c853-1836-4d77-95fa-aa8573154075"
+  }
+}]]></component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.489658170741404" />
+      <entry key="MS500" value="2.421027256734254" />
+      <entry key="S2" value="3.9584321528216977" />
+      <entry key="S5" value="4.964051381939843" />
+      <entry key="S10" value="5.435534372868603" />
+      <entry key="S30" value="5.800367943708705" />
+      <entry key="S60" value="5.8986729135361395" />
+      <entry key="M2" value="5.954778955775644" />
+      <entry key="M5" value="6.766523893869197" />
+      <entry key="M10" value="10.3875105339488" />
+      <entry key="M15" value="14.650139198209558" />
+      <entry key="M30" value="25.93975356496827" />
+      <entry key="H1" value="38.96156307960244" />
+      <entry key="H2" value="49.388952398288716" />
+      <entry key="H4" value="56.07105098130841" />
+      <entry key="D1" value="62.58174112850936" />
+      <entry key="W1" value="63.794876125284354" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="3.39006125651448E-246" />
+      <entry key="S10" value="1.841211898862941E-123" />
+      <entry key="S30" value="1.225654105504842E-41" />
+      <entry key="S60" value="3.500934311730002E-21" />
+      <entry key="M2" value="5.916869367942811E-11" />
+      <entry key="M5" value="8.106563564963575E-5" />
+      <entry key="M10" value="0.009003645686589172" />
+      <entry key="M15" value="0.043279170742554385" />
+      <entry key="M30" value="0.20803646493476682" />
+      <entry key="H1" value="0.4561101456170061" />
+      <entry key="H2" value="0.6753592715118416" />
+      <entry key="H4" value="0.8218024528509517" />
+      <entry key="D1" value="0.9678199546174283" />
+      <entry key="W1" value="0.995338156525106" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.4454363036762925" />
+      <entry key="MS500" value="2.4048004881855913" />
+      <entry key="S2" value="3.9506341712222235" />
+      <entry key="S5" value="4.959884459646768" />
+      <entry key="S10" value="5.433201425634257" />
+      <entry key="S30" value="5.79952552919002" />
+      <entry key="S60" value="5.898242953525362" />
+      <entry key="M2" value="5.9545615423787615" />
+      <entry key="M5" value="6.766506323445288" />
+      <entry key="M10" value="10.396421992802013" />
+      <entry key="M15" value="14.693292766564896" />
+      <entry key="M30" value="26.147595667748973" />
+      <entry key="H1" value="39.41748215375104" />
+      <entry key="H2" value="50.064175390094675" />
+      <entry key="H4" value="56.892771789219125" />
+      <entry key="D1" value="63.54954524073613" />
+      <entry key="W1" value="64.79021195856595" />
+    </decayedShown>
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="2" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="3J34t9YbLjGLlM22vhZVT8Mx9rz" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Gradle.edu_ai [build].executor": "Run",
+    "Gradle.edu_ai [clean].executor": "Run",
+    "Gradle.edu_ai [jar].executor": "Run",
+    "Gradle.edu_ai [run].executor": "Run",
+    "Gradle.first-api-call [build].executor": "Run",
+    "Gradle.first-api-call [clean].executor": "Run",
+    "Gradle.first-api-call [run].executor": "Run",
+    "Gradle.weather [build].executor": "Run",
+    "Kotlin script (Beta).build.gradle.kts.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/Slava/edu_ai/weather",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "editor.preferences.completion.inline",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/weather" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Gradle.weather [build]">
+    <configuration name="edu_ai [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="first-api-call [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/first-api-call" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="first-api-call [clean]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/first-api-call" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="clean" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="first-api-call [run]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/first-api-call" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="run" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <configuration name="weather [build]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
+      <ExternalSystemSettings>
+        <option name="executionName" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/weather" />
+        <option name="externalSystemIdString" value="GRADLE" />
+        <option name="scriptParameters" />
+        <option name="taskDescriptions">
+          <list />
+        </option>
+        <option name="taskNames">
+          <list>
+            <option value="build" />
+          </list>
+        </option>
+        <option name="vmOptions" />
+      </ExternalSystemSettings>
+      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+      <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
+      <DebugAllEnabled>false</DebugAllEnabled>
+      <RunAsTest>false</RunAsTest>
+      <GradleProfilingDisabled>false</GradleProfilingDisabled>
+      <GradleCoverageDisabled>false</GradleCoverageDisabled>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Gradle.weather [build]" />
+        <item itemvalue="Gradle.first-api-call [clean]" />
+        <item itemvalue="Gradle.first-api-call [run]" />
+        <item itemvalue="Gradle.first-api-call [build]" />
+        <item itemvalue="Gradle.edu_ai [build]" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-a203e0a19954-intellij.indexing.shared.core-IU-262.10315.125" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.10315.125" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d720e975-ead7-4bdf-a674-78b801962662" name="Changes" comment="" />
+      <created>1788876630058</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1788876630058</updated>
+      <workItem from="1788876631092" duration="3064000" />
+      <workItem from="1788951531904" duration="5181000" />
+      <workItem from="1789031907193" duration="115000" />
+      <workItem from="1789032031474" duration="182000" />
+      <workItem from="1789032222536" duration="27000" />
+      <workItem from="1789032259319" duration="179000" />
+      <workItem from="1789032454915" duration="319000" />
+      <workItem from="1789032824852" duration="577000" />
+      <workItem from="1789033414444" duration="63000" />
+      <workItem from="1789033587002" duration="598000" />
+      <workItem from="1789035620228" duration="3184000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <ignored-roots>
+      <path value="$PROJECT_DIR$/first-api-call" />
+    </ignored-roots>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
