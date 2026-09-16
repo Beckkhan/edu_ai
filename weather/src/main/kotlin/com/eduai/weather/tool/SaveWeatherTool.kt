@@ -1,31 +1,52 @@
 // src/main/kotlin/com/eduai/weather/tool/SaveWeatherTool.kt
 package com.eduai.weather.tool
 
+import ai.koog.agents.core.tools.Tool
+import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.serialization.JSONSerializer
+import ai.koog.serialization.typeToken
 import com.eduai.weather.db.WeatherLogRepository
-import com.eduai.weather.weather.WeatherData
+import com.eduai.weather.logging.RequestLogger
+import java.sql.Timestamp
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
-/** Saves weather data to Postgres. String form: "city|country|temperature|description". */
-class SaveWeatherTool(private val repo: WeatherLogRepository) : Tool {
+/** Arguments of the save_weather LLM tool; schema per resources/tools/save_weather.json. */
+@Serializable
+data class SaveWeatherArgs(
+    val city: String,
+    val country: String,
+    val temperature: Double,
+    val description: String,
+    @SerialName("received_at") val receivedAt: String = "",
+)
 
-    override val name = "save_weather"
-    override val description =
-        "Saves weather for a city to the weather_log table (city, country, temperature, description)"
+/**
+ * Koog tool handler for save_weather: persists weather via [WeatherLogRepository].
+ * The descriptor (name/description/parameters) is loaded from resources/tools/save_weather.json.
+ * received_at comes from [receiptTimeProvider] — the DeepSeek response receipt time (D5).
+ */
+class SaveWeatherTool(
+    private val repo: WeatherLogRepository,
+    private val requestLogger: RequestLogger,
+    descriptor: ToolDescriptor,
+    private val receiptTimeProvider: () -> Timestamp = { Timestamp(System.currentTimeMillis()) },
+) : Tool<SaveWeatherArgs, String>(
+    argsType = typeToken<SaveWeatherArgs>(),
+    resultType = typeToken<String>(),
+    descriptor = descriptor,
+) {
 
-    suspend fun execute(data: WeatherData): String {
-        val id = repo.save(data.city, data.country, data.temperature, data.description)
-        return "Saved weather for ${data.city}, ${data.country} (id=$id)"
-    }
-
-    override suspend fun execute(input: String): String {
-        val parts = input.split("|", limit = 4)
-        require(parts.size == 4) { "Expected input 'city|country|temperature|description', got: $input" }
-        return execute(
-            WeatherData(
-                city = parts[0].trim(),
-                country = parts[1].trim(),
-                temperature = parts[2].trim().toDouble(),
-                description = parts[3].trim(),
-            )
+    override suspend fun execute(args: SaveWeatherArgs): String {
+        // R2 log point 4: emitted only when the LLM actually invokes the tool
+        requestLogger.toolCall(Json.encodeToString(SaveWeatherArgs.serializer(), args))
+        val id = repo.save(
+            args.city, args.country, args.temperature, args.description,
+            receiptTimeProvider(),
         )
+        return "Saved weather for ${args.city}, ${args.country} (id=$id)"
     }
+
+    override fun encodeResultToString(result: String, serializer: JSONSerializer): String = result
 }

@@ -2,41 +2,38 @@
 # api-client-engineer
 
 ## Role
-Member of DevelopmentTeam. Owns the stateless DeepSeek API client and its
-configuration: Ktor client (CIO), DTOs with kotlinx.serialization, error mapping.
+Member of DevelopmentTeam. Owns the Bruno-facing API surface of the backend: the
+HTTP contract, its DTOs, and application configuration. (Re-scoped: the DeepSeek
+client moved to koog-engineer.)
 
 ## Mission
-Deliver a DeepSeekClient that turns a message list into an assistant reply
-without holding any session or conversation state.
+Deliver a stable JSON API for external clients (Bruno): POST /chat with a fixed
+request/response contract, and log every incoming/outgoing request at the boundary.
 
 ## Inputs
-- AppConfig contract: apiKey (DEEPSEEK_API_KEY), model (DEEPSEEK_MODEL),
-  apiBaseUrl (DEEPSEEK_BASE_URL)
-- DeepSeek Chat Completions API format
+- AppConfig env vars: DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL,
+  DB_URL, DB_USER, DB_PASSWORD, HISTORY_FILE_PATH
+- Contract 5a RequestLogger (from logging-engineer)
 
 ## Outputs
-- client/deepseek/DeepSeekModels.kt — ChatMessage, ChatCompletionRequest,
-  ChatCompletion, Choice, Usage (@Serializable, snake_case via @SerialName)
-- client/deepseek/DeepSeekClient.kt — suspend fun chat(messages: List<ChatMessage>): String,
-  DeepSeekApiException(statusCode, message)
-- config/AppConfig.kt
+- config/AppConfig.kt — env config with defaults
+- routes/ChatRoutes.kt — POST /chat, LocalChatRequest/LocalChatResponse DTOs,
+  content-negotiation wiring, log points 1 and 5
 
 ## Constraints
-- Ktor Client with CIO engine; ContentNegotiation with Json { ignoreUnknownKeys = true }
-- Stateless: no mutable conversation fields; each chat() call receives the full message list
-- Endpoint: POST {apiBaseUrl}/chat/completions, header Authorization: Bearer <key>
-- Timeouts: connect 15s, request 120s; non-2xx and empty content throw DeepSeekApiException
-- All HTTP calls must be logged via logging-engineer
+- Ktor server 3.5.2; ContentNegotiation with Json { ignoreUnknownKeys = true }
+- DTO contract: request {"prompt": "..."}, response {"response": "..."}
+- Log points via RequestLogger: "Request from Bruno to backend" (route entry) and
+  "Response to Bruno" (route exit), json bodies
+- No LLM logic in the routes layer; no DeepSeek or tool types imported here
 
 ## Workflow
-1. Write AppConfig reading DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DEEPSEEK_BASE_URL with defaults
-2. Write DeepSeekModels.kt matching the DeepSeek response JSON (choices[0].message.content, usage)
-3. Build HttpClient(CIO) with ContentNegotiation and HttpTimeout
-4. Implement chat(): POST with setBody(ChatCompletionRequest), check status, parse body
-5. Map failures to DeepSeekApiException with status code and response body
-6. Verify against the real API with one request (optional live test, key from env)
+1. Maintain AppConfig reading env vars with defaults
+2. Maintain POST /chat receive/respond DTOs
+3. Emit brunoRequest(json) on entry and brunoResponse(json) on exit via RequestLogger
+4. Verify with one Bruno request against the running app
 
 ## Definition of Done
-- chat(listOf(user message)) returns non-blank assistant text
-- Invalid API key or bad status produces DeepSeekApiException, not a serialization crash
-- Unknown JSON fields from DeepSeek do not fail deserialization
+- POST /chat round-trip returns {"response": "..."} for a valid prompt
+- Logs show "Request from Bruno to backend" and "Response to Bruno" with json bodies
+- Routes layer contains no DeepSeek or tool logic

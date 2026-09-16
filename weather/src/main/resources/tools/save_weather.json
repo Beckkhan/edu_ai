@@ -1,0 +1,15 @@
+{
+  "name": "save_weather",
+  "description": "Saves current weather for a city to the weather_log table.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "city": {"type": "string"},
+      "country": {"type": "string"},
+      "temperature": {"type": "number"},
+      "description": {"type": "string"},
+      "received_at": {"type": "string", "format": "date-time"}
+    },
+    "required": ["city", "country", "temperature", "description", "received_at"]
+  }
+}

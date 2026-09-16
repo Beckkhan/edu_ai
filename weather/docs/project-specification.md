@@ -56,7 +56,7 @@ Bruno ──POST /chat──▶ ChatRoutes ──▶ ChatService ──▶ Weath
 ### 3.2 Tool call path
 
 ```
-WeatherAgent (AIAgent + chatAgentStrategy)
+WeatherAgent (AIAgent + singleRunStrategy)
    └─ LLM decides to call save_weather
         └─ handler: SaveWeatherTool
              └─ WeatherLogRepository.save(city, country, temperature, description, received_at)
@@ -174,7 +174,7 @@ as a safety net only.
 
 ### 5c. Koog strategy contract (R4)
 
-- `WeatherAgent` wraps an `AIAgent` with `chatAgentStrategy()`
+- `WeatherAgent` wraps an `AIAgent` with `singleRunStrategy()`
 - Tool descriptors are loaded from `resources/tools/*.json` at startup
 - Invariant: the tools list handed to the agent is never empty — startup fails fast if
   no tool file is present, so every backend→DeepSeek request carries a non-empty `tools` array
@@ -196,11 +196,11 @@ direct `tool.execute()`.
 
 ## Decision log
 
-**D1 — Koog agent layer as the only LLM surface.**
-Why: R1 mandates Koog for all DeepSeek interactions; AIAgent + strategy provides native
-tool-calling for R3/R4 without hand-rolled loops.
-Alternatives: raw PromptExecutor calls (tool loop would be hand-written — against the
-harness-driven spirit); direct HTTP client (rejected by R1).
+**D1 — Koog agent layer (AIAgent + singleRunStrategy) as the only LLM surface.**
+Why: R1 mandates Koog for all DeepSeek interactions; singleRunStrategy provides optional
+tool calls, which D6 requires (CLARIFY/NORMAL text flows with no tool call).
+Alternatives considered: (a) chatAgentStrategy — rejected, its forced tool loop breaks D6;
+(b) custom strategy — overkill, singleRunStrategy covers the case out of the box.
 
 **D2 — api-client-engineer re-scoped, not retired.**
 Why: its old scope (hand-written client) is already Koog-replaced; Bruno-facing API
@@ -233,3 +233,14 @@ in requirements); keeping the proven CLARIFY/FETCH flow preserves current UX whi
 write moves onto the required tool path.
 Alternatives: give the LLM a second fetch tool (adds an unrequested tool; risks
 hallucinated weather); drop the clarification flow (changes behavior beyond R1–R6).
+
+**D7 — History passed to WeatherAgent.chat(messages) as a single Prompt; no Koog session state.**
+Decision: History is passed to WeatherAgent.chat(messages) as a single Prompt with
+system/user/assistant roles; AIAgent.run() receives this Prompt in full. Koog's agent
+session is NOT used to store history across calls — ChatHistoryStore remains the single
+source of truth.
+Why: ChatService already owns the deterministic CLARIFY/FETCH/NORMAL flow and the history;
+duplicating state inside Koog's session creates two sources of truth and violates
+statelessness (5d).
+Alternatives considered: (a) use Koog's session — duplicated state, drift risk;
+(b) skip history entirely — loses dialogue context.

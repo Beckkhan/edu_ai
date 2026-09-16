@@ -2,15 +2,13 @@
 package com.eduai.weather.service
 
 import com.eduai.weather.client.deepseek.ChatMessage
-import com.eduai.weather.client.deepseek.DeepSeekClient
+import com.eduai.weather.client.deepseek.WeatherAgent
 import com.eduai.weather.history.ChatHistoryStore
-import com.eduai.weather.tool.SaveWeatherTool
 import com.eduai.weather.weather.WeatherService
 
 class ChatService(
-    private val deepSeekClient: DeepSeekClient,
+    private val agent: WeatherAgent,
     private val history: ChatHistoryStore,
-    private val saveWeatherTool: SaveWeatherTool,
     private val weatherService: WeatherService,
 ) {
 
@@ -30,7 +28,7 @@ class ChatService(
 
         // B) Normal flow: strict LLM router
         history.append(ChatMessage(role = "user", content = prompt))
-        val routed = deepSeekClient.chat(
+        val routed = agent.chat(
             listOf(ChatMessage(role = "system", content = ROUTER_INSTRUCTION)) + history.recent(10)
         )
 
@@ -60,18 +58,18 @@ class ChatService(
         }
     }
 
-    /** "FETCH: City, Country" → real weather → DB save → formatted final answer. */
+    /** "FETCH: City, Country" → real weather → agent saves via tool call → formatted final answer. */
     private suspend fun processFetch(fetchCommand: String, originalPrompt: String): String {
         val (city, country) = parseLocation(fetchCommand.removePrefix(FETCH_PREFIX).trim())
         val weather = weatherService.getWeather(city, country)
-        saveWeatherTool.execute(weather)
-        return deepSeekClient.chat(
+        return agent.chat(
             listOf(
                 ChatMessage(
                     role = "system",
                     content = "The real weather in ${weather.city}, ${weather.country} is " +
                         "${weather.temperature}°C, ${weather.description}. " +
-                        "Answer the user's original question using this exact data.",
+                        "Call save_weather with this data (city, country, temperature, description), " +
+                        "then answer the user's original question using this exact data.",
                 ),
                 ChatMessage(role = "user", content = originalPrompt),
             )

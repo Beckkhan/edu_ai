@@ -7,6 +7,7 @@
 package com.eduai.weather.db
 
 import org.postgresql.ds.PGSimpleDataSource
+import java.sql.Timestamp
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -31,8 +32,9 @@ class WeatherLogRepositoryTest {
     }
 
     @Test
-    fun `saves and retrieves weather with country temperature and description`() {
-        savedId = repo.save("Moscow", "Russia", -2.5, "Clear")
+    fun `saves and retrieves weather with country temperature description and receivedAt`() {
+        val receivedAt = Timestamp(System.currentTimeMillis())
+        savedId = repo.save("Moscow", "Russia", -2.5, "Clear", receivedAt)
 
         val saved = repo.listRecent(50).firstOrNull { it.id == savedId }
         assertNotNull(saved, "saved row must be retrievable")
@@ -40,6 +42,8 @@ class WeatherLogRepositoryTest {
         assertEquals("Russia", saved.country)
         assertEquals(-2.5, saved.temperature)
         assertEquals("Clear", saved.description)
+        // received_at must round-trip exactly (D5/T8), not be replaced by the DB default
+        assertEquals(receivedAt.time, saved.receivedAt.time)
     }
 
     @AfterTest

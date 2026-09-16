@@ -16,7 +16,13 @@ data class WeatherLogEntry(
 /** Plain JDBC access to weather_log. No ORM. */
 class WeatherLogRepository(private val ds: DataSource) {
 
-    fun save(city: String, country: String, temperature: Double, description: String): Long =
+    fun save(
+        city: String,
+        country: String,
+        temperature: Double,
+        description: String,
+        receivedAt: Timestamp,
+    ): Long =
         ds.connection.use { conn ->
             conn.prepareStatement(
                 "INSERT INTO weather_log (city, country, temperature, description, received_at) VALUES (?, ?, ?, ?, ?) RETURNING id"
@@ -25,7 +31,7 @@ class WeatherLogRepository(private val ds: DataSource) {
                 st.setString(2, country)
                 st.setDouble(3, temperature)
                 st.setString(4, description)
-                st.setTimestamp(5, Timestamp(System.currentTimeMillis()))
+                st.setTimestamp(5, receivedAt)
                 st.executeQuery().use { rs ->
                     rs.next()
                     rs.getLong(1)

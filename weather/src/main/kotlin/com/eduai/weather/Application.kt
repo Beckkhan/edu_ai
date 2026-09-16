@@ -2,14 +2,16 @@
 package com.eduai.weather
 
 import com.eduai.weather.client.deepseek.DeepSeekClient
+import com.eduai.weather.client.deepseek.KoogWeatherAgent
 import com.eduai.weather.config.AppConfig
 import com.eduai.weather.db.DataSourceFactory
 import com.eduai.weather.db.WeatherLogRepository
 import com.eduai.weather.history.ChatHistoryStore
+import com.eduai.weather.logging.Slf4jRequestLogger
 import com.eduai.weather.routes.chatRoutes
 import com.eduai.weather.service.ChatService
-import com.eduai.weather.tool.SaveWeatherTool
 import com.eduai.weather.weather.WeatherService
+import java.sql.Timestamp
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -31,15 +33,30 @@ fun Application.module() {
     history.clearAll() // fresh history on every restart
     log.info("Chat history reset on startup")
 
+    val requestLogger = Slf4jRequestLogger()
+    val deepSeekClient = DeepSeekClient(config, requestLogger)
+
     val chatService = ChatService(
-        deepSeekClient = DeepSeekClient(config),
+        agent = KoogWeatherAgent(
+            executor = deepSeekClient.executor,
+            model = deepSeekClient.model,
+            repo = WeatherLogRepository(dataSource),
+            requestLogger = requestLogger,
+            // D5/T9: received_at = moment the DeepSeek response with the weather data arrived
+            receiptTimeProvider = {
+                Timestamp(
+                    deepSeekClient.lastResponseReceivedAt
+                        .takeIf { it > 0 }
+                        ?: System.currentTimeMillis()
+                )
+            },
+        ),
         history = history,
-        saveWeatherTool = SaveWeatherTool(WeatherLogRepository(dataSource)),
         weatherService = WeatherService(),
     )
 
     routing {
-        chatRoutes(chatService)
+        chatRoutes(chatService, requestLogger)
     }
 }
 
