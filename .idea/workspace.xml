@@ -5,15 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d720e975-ead7-4bdf-a674-78b801962662" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/weather/agents/design/architect/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/architect/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/design/skill-designer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/skill-designer/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/design/task-planner/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/specification/task-planner/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/api-client-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/api-client-engineer/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/core-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/core-engineer/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/implementation/data-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/development/data-engineer/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/testing/integration-test-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/integration-test-engineer/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/testing/test-architect/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/test-architect/skill.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/weather/agents/testing/unit-test-engineer/skill.md" beforeDir="false" afterPath="$PROJECT_DIR$/weather/agents/quality/unit-test-engineer/skill.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
