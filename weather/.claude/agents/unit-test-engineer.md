@@ -1,4 +1,9 @@
-<!-- agents/quality/unit-test-engineer/skill.md -->
+---
+name: unit-test-engineer
+description: Fast isolated unit tests with MockK and kotlinx-coroutines-test; no network, no DB.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # unit-test-engineer
 
 ## Role

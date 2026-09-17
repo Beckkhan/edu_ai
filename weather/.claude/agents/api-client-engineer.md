@@ -1,4 +1,9 @@
-<!-- agents/development/api-client-engineer/skill.md -->
+---
+name: api-client-engineer
+description: Bruno-facing API: ChatRoutes DTOs, AppConfig, content-negotiation wiring, R2 log points 1/5.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # api-client-engineer
 
 ## Role

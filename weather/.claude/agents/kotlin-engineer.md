@@ -1,4 +1,9 @@
-<!-- agents/development/kotlin-engineer/skill.md -->
+---
+name: kotlin-engineer
+description: Application glue: ChatService orchestration, history, WeatherService, Application.kt wiring.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # kotlin-engineer
 
 ## Role

@@ -1,4 +1,9 @@
-<!-- agents/development/data-engineer/skill.md -->
+---
+name: data-engineer
+description: Persistence: weather_log schema, JDBC repository with explicit received_at, HikariCP datasource.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # data-engineer
 
 ## Role

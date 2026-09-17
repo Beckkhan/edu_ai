@@ -1,4 +1,9 @@
-<!-- agents/development/koog-engineer/skill.md -->
+---
+name: koog-engineer
+description: All LLM interactions: Koog DeepSeek client, WeatherAgent, tool registration from resources/tools/*.json, R2 log points 2/3/4.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # koog-engineer
 
 ## Role

@@ -1,4 +1,9 @@
-<!-- agents/specification/spec-writer/skill.md -->
+---
+name: spec-writer
+description: Writes docs/project-specification.md from docs/requirements.md: goal, tech stack, architecture, team responsibilities, key contracts.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # spec-writer
 
 ## Role

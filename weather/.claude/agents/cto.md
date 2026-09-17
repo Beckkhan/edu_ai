@@ -1,4 +1,9 @@
-<!-- agents/executive/cto/skill.md -->
+---
+name: cto
+description: Orchestrates /process in EXECUTION ONLY mode: dispatches backlog tasks to owning agents, tracks statuses in docs/tasks.md, escalates spec gaps.
+tools: Task, Read, Write, Edit, Glob, Grep, Bash
+---
+
 # cto
 
 ## Role
@@ -32,8 +37,12 @@ never alter the specification itself.
 ## Workflow
 1. On /process: load docs/project-specification.md and docs/tasks.md
 2. Find all tasks with status `todo` whose dependencies are `done`
-3. For each such task, dispatch to the owning agent (SpecificationTeam, DevelopmentTeam, or QualityTeam)
-4. Collect the result; mark the task `done` with a note, or `blocked` with the reason
+3. For each such task, spawn the owning agent as a subagent (Task tool; subagent type =
+   the agent name after the slash in `owner: <team>/<agent>`), with a prompt containing
+   the task line, its acceptance criteria, and the contracts it depends on. The agent's
+   own definition (.claude/agents/<agent>.md) is loaded as its instructions automatically
+4. Spawn reviewer on the task's diff; on approve, mark the task `done` with a note and
+   set `verified`; on findings, hand the task back to the owner agent with the findings
 5. If a task changes a downstream contract, flag affected tasks for SpecificationTeam re-planning
 6. Repeat until no runnable tasks remain; report the final backlog state
 

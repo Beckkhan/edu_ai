@@ -1,4 +1,9 @@
-<!-- agents/quality/reviewer/skill.md -->
+---
+name: reviewer
+description: Read-only diff review gate: approves or returns findings before a task is marked done.
+tools: Read, Glob, Grep, Bash
+---
+
 # reviewer
 
 ## Role

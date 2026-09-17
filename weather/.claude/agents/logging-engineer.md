@@ -1,4 +1,9 @@
-<!-- agents/development/logging-engineer/skill.md -->
+---
+name: logging-engineer
+description: R2 logging module: RequestLogger interface + SLF4J implementation, exact line format, secret redaction.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # logging-engineer
 
 ## Role

@@ -10,15 +10,17 @@ argument-hint: [task-id | all]
 # /process
 
 Drives the harness execution loop. Delegates to the **cto** agent
-(`agents/executive/cto/skill.md`) in **EXECUTION ONLY** mode.
+(`.claude/agents/cto.md`) in **EXECUTION ONLY** mode.
 
 ## What it does
 
 1. Loads `docs/project-specification.md` and `docs/tasks.md`
 2. Runs the task backlog top-down: every `todo` task whose dependencies are `done`
-   is dispatched to its owning agent (SpecificationTeam, DevelopmentTeam, QualityTeam)
-3. Updates task statuses in `docs/tasks.md` after each task finishes
-4. Escalates blockers and specification gaps back to SpecificationTeam — never fixes them inline
+   is executed by spawning the owning agent as a subagent (SpecificationTeam,
+   DevelopmentTeam, QualityTeam)
+3. Spawns the reviewer subagent on each task's diff before it is marked done
+4. Updates task statuses in `docs/tasks.md` after each task finishes
+5. Escalates blockers and specification gaps back to SpecificationTeam — never fixes them inline
 
 ## Usage
 

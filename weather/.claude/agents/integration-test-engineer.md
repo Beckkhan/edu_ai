@@ -1,4 +1,9 @@
-<!-- agents/quality/integration-test-engineer/skill.md -->
+---
+name: integration-test-engineer
+description: Integration tests against Docker Postgres: real JDBC, row cleanup.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # integration-test-engineer
 
 ## Role

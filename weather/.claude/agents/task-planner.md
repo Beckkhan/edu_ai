@@ -1,4 +1,9 @@
-<!-- agents/specification/task-planner/skill.md -->
+---
+name: task-planner
+description: Writes docs/tasks.md: ordered, dependency-aware task backlog with owners, artifacts, and acceptance criteria.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # task-planner
 
 ## Role

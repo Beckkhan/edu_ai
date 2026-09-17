@@ -1,4 +1,9 @@
-<!-- agents/quality/test-architect/skill.md -->
+---
+name: test-architect
+description: Test strategy: unit vs integration split, mock boundaries, test file ownership.
+tools: Read, Write, Edit, Glob, Grep, Bash
+---
+
 # test-architect
 
 ## Role

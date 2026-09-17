@@ -1,4 +1,9 @@
-<!-- agents/development/core-engineer/skill.md -->
+---
+name: core-engineer
+description: Retired agent: former scope absorbed by kotlin-engineer/koog-engineer/api-client-engineer; redirects stale references.
+tools: Read, Glob, Grep, Bash
+---
+
 # core-engineer
 
 ## Role
