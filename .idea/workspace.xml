@@ -6,6 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="d720e975-ead7-4bdf-a674-78b801962662" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/development/api-client-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/development/api-client-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/development/data-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/development/data-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/development/koog-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/development/koog-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/development/kotlin-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/development/kotlin-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/development/logging-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/development/logging-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/quality/test-engineer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/quality/test-engineer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/specification/architect.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/specification/architect.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/.claude/agents/specification/skill-designer.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/.claude/agents/specification/skill-designer.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/docs/project-specification.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/docs/project-specification.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/docs/tasks.md" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/docs/tasks.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/turbofa/src/main/resources/logback.xml" beforeDir="false" afterPath="$PROJECT_DIR$/turbofa/src/main/resources/logback.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
