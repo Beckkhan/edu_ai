@@ -1,6 +1,6 @@
 ---
 name: koog-engineer
-description: All LLM interactions: Koog DeepSeek client, agent strategy, get_fueling_info tool + descriptor, fueling_id embedding, R2 log points 2/3/4.
+description: All LLM interactions: Koog DeepSeek client, agent strategy, get_fueling_info tool + descriptor, R2 log points 2/3/4.
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -13,7 +13,8 @@ DeepSeek client on the Koog framework, the agent layer, and the LLM tool surface
 ## Mission
 Deliver the Koog-based stack that turns a message list into an assistant reply, with
 get_fueling_info registered as an LLM tool so every backend→DeepSeek request carries a
-non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R9).
+non-empty tools array (R7). The message list arrives fully built: embedding fueling_id
+is ChatService's job (spec 5d), so `chat(messages)` never adds the id itself.
 
 ## Inputs
 - AppConfig contract: apiKey (DEEPSEEK_API_KEY), model (DEEPSEEK_MODEL)
@@ -25,11 +26,11 @@ non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R
 - Read-only fueling queries (from data-engineer)
 
 ## Outputs
-- client/deepseek/DeepSeekModels.kt — ChatMessage (role, content)
+- client/deepseek/DeepSeekModels.kt — ChatMessage(role: String, content: String),
+  String roles "system"/"user"/"assistant" per spec 5d (matches T7's construction)
 - client/deepseek/DeepSeekClient.kt — Koog DeepSeekLLMClient + PromptExecutor, close()
 - client/deepseek/TurbofaAgent.kt — chat entry point backed by AIAgent +
-  singleRunStrategy (spec D1, NOT chatAgentStrategy — it forces tool calls);
-  when fueling_id is present, embeds it into the DeepSeek message (R9)
+  singleRunStrategy (spec D1, NOT chatAgentStrategy — it forces tool calls)
 - src/main/resources/tools/get_fueling_info.json — tool descriptor (R7 contract)
 - tool/FuelingInfoTool.kt — Koog tool handler → data-engineer's read-only queries
   by fueling_id (fueling + payment + vendors)
@@ -45,13 +46,16 @@ non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R
   emitted in the Receive phase of the response pipeline (spec D3 — Transform/Parse
   phases do not fire for Koog)
 - Stateless: no mutable conversation fields; each chat() call receives the full message list
+- Do NOT embed fueling_id — ChatService already did (spec 5d); chat(messages) has no
+  fueling_id parameter and adding the id again duplicates it in the DeepSeek message
 - Token efficiency (R11): minimal messages, no repeated tool results
 
 ## Workflow
 1. Keep DeepSeekClient (DeepSeekLLMClient + MultiLLMPromptExecutor) as the agent's executor
 2. Create resources/tools/get_fueling_info.json per the skill-designer's format contract
 3. Build TurbofaAgent: AIAgent + singleRunStrategy (spec D1), model from AppConfig;
-   embed fueling_id into the DeepSeek message when the request carries one
+   map ChatMessage role strings to Koog messages (SystemMessage/UserMessage/
+   AssistantMessage) — never embed fueling_id, ChatService already did (spec 5d)
 4. Register tools from resources/tools/*.json; fail fast on an empty tool set
 5. Implement the FuelingInfoTool handler → data-engineer queries (fueling, payment,
    vendors by fueling_id)
@@ -61,7 +65,8 @@ non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R
 ## Definition of Done
 - TurbofaAgent.chat returns the final assistant text; tool calls execute inside the agent
 - Every backend→DeepSeek request carries a non-empty tools array containing get_fueling_info
-- With fueling_id: the tool call fires against the external DB and the summary follows (R9);
-  without: no tool call, normal dialogue
+- With fueling_id (already embedded in the user message by ChatService, spec 5d): the tool
+  call fires against the external DB and the summary follows (R9); without: no tool call,
+  normal dialogue
 - The three DeepSeek-side R2 lines appear with json bodies; no secrets logged
 - No hand-written DeepSeek HTTP code outside this agent's files

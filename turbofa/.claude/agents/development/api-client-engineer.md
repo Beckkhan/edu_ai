@@ -26,12 +26,14 @@ optional fueling_id, and log every incoming/outgoing request at the boundary.
 
 ## Constraints
 - Ktor server 3.5.2; ContentNegotiation with Json { ignoreUnknownKeys = true }
-- DTO contract per R9: request {"prompt": "...", "fueling_id": <int>} where
-  fueling_id is OPTIONAL; response carries the assistant text
+- DTO contract per R9 + D6: request {"prompt": "...", "fueling_id": "<uuid>"} where
+  fueling_id is OPTIONAL and a String UUID — R9's <int> is stale (E1); response
+  carries the assistant text
 - Log points via RequestLogger: "Request from Bruno to backend" (route entry) and
   "Response from backend to Bruno" (route exit), json bodies (R8)
 - No LLM logic in the routes layer; no DeepSeek or tool types imported here
-- fueling_id validation: when present it must be an int; reject otherwise
+- fueling_id validation: when present it must be a non-blank UUID string; reject
+  otherwise
 
 ## Workflow
 1. Maintain AppConfig reading env vars with defaults

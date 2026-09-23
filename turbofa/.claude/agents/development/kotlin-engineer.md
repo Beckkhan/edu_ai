@@ -32,12 +32,17 @@ history into one round-trip, so a Bruno request flows exactly as specified in R9
 - No LLM HTTP calls here — all DeepSeek interaction is via koog-engineer's entry point (R6)
 - No SQL here — fueling data comes only from data-engineer's read-only queries
 - History: local cache + text file only; file truncated on startup (R4)
+- R2 log: logs/turbofa.log truncated at startup as well (T9 acceptance2, E4/D4) — a
+  top-level initializer above Application.kt's `log` property, before the first SLF4J
+  logger; main() is too late
 - Simple readable code, no interfaces with a single implementation (R10)
 
 ## Workflow
 1. Wire the Ktor application from the spec's package tree
 2. Implement ChatService per the R9 chain (with and without fueling_id)
-3. Implement the history store trio; truncate the file on startup
+3. Implement the history store trio; truncate the history file on startup, and truncate
+   logs/turbofa.log in the same startup step (top-level initializer above the `log`
+   property — before the first SLF4J logger, D4/E4)
 4. Emit no R2 log lines directly — those call sites belong to the owning agents
 5. Verify the round-trip with one Bruno request against the running app
 

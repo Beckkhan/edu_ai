@@ -4,7 +4,8 @@
 Solution document for the turbofa fueling-data chat backend (`com.eduai.turbofa`).
 Written by the Specification team (spec-writer, architect as consultant) from
 `docs/requirements.md`; external schema discovered 2026-09-23 (read-only, see §6).
-Executed by the CTO via `/process` against `docs/tasks.md`.
+Executed by the CTO via `/process` against `docs/tasks.md`. Logback 1.6.3 append
+behavior verified 2026-09-23 against the resolved jars and a live run (§5a/D4, E4).
 
 ## 1. Goal
 
@@ -21,7 +22,10 @@ through `.claude` agents via `/process` — no hand-written code.
   creation, no writes of any kind (R5).
 - All DeepSeek calls via Koog (R6); every backend→DeepSeek request carries a
   non-empty tools array (R7).
-- Five R2 log points with json bodies, written only to logs/turbofa.log (R8).
+- Five R2 log points with json bodies, written only to logs/turbofa.log (R8); per run
+  that is 4 log events for a plain dialogue and 7 when a tool call is made (3.2); the
+  file is truncated at startup so one run's file holds exactly that run's events
+  (D4, 5a).
 - Message history in a local cache + text file; the file is cleared on restart (R4).
 
 ## 2. Tech stack
@@ -35,7 +39,7 @@ Versions from build.gradle.kts (no changes without a task):
 | LLM | **Koog 1.2.0 (mandatory for ALL DeepSeek interactions, R6)**: koog-agents, prompt-executor-deepseek-client 1.2.0-beta, http-client-ktor |
 | Serialization | kotlinx-serialization-json 1.11.0 |
 | DB access | Plain JDBC (postgresql 42.7.7) + HikariCP 6.2.1 — read-only, external |
-| Logging | SLF4J + logback-classic 1.6.3 |
+| Logging | SLF4J + logback-classic 1.6.3 (RollingFileAppender forces append=true — D4) |
 | Tests | JUnit 5 (kotlin-test), MockK 1.14.11, kotlinx-coroutines-test 1.8.1 |
 | Infra | No docker-compose — the database is external and already running |
 
@@ -62,9 +66,12 @@ TurbofaAgent ──tool call──▶ FuelingInfoTool ──SELECT──▶ fuel
 ```
 
 - `ChatRoutes` receives the R9 DTO (log point 1), `ChatService` builds the message
-  list, the agent runs with a non-empty tool set, `ChatRoutes` returns the assistant
-  text (log point 5).
+  list (embedding fueling_id into the outgoing user message when present, R9 — the
+  single embedding point), the agent runs with a non-empty tool set, `ChatRoutes`
+  returns the assistant text (log point 5).
 - No tool call happens when fueling_id is absent — plain dialogue (D1).
+- The server binds `0.0.0.0:8080`; Bruno targets `http://localhost:8080/chat`
+  (pinned from T9, the same binding as the sibling weather project).
 
 ### 3.2 Logging boundaries (R8)
 
@@ -78,19 +85,28 @@ All five lines go through one logger interface (contract 5a), owned by logging-e
 | 4 | `Tool call` (only if a tool is actually used) | tool handler (koog-engineer) |
 | 5 | `Response from backend to Bruno` | ChatRoutes (api-client-engineer) |
 
+Event counts per run (R8's "five log points" counts the defined points, not a run's
+lines): a plain-dialogue run emits 4 events — 1,2,3,5 — and a tool-call run emits 7 —
+1,2,3,4,2,3,5 — because R9's chain mandates two DeepSeek exchanges (tool call, then
+summary) and D3 fires point 3 for each DeepSeek response.
+
 Secrets (DEEPSEEK_API_KEY, DB_PASSWORD, Authorization) never appear in any log line.
+
+`logs/turbofa.log` is truncated at startup before logback opens it, so a run's file
+contains only that run's events (D4, 5a). Application.kt's own log lines go to the
+root CONSOLE logger, never to FILE (which is attached only to the R2 logger).
 
 ### 3.3 Module map
 
 ```
 src/main/kotlin/com/eduai/turbofa/
-├── Application.kt            # wiring (kotlin-engineer)
+├── Application.kt            # wiring + startup truncation of logs/turbofa.log (kotlin-engineer, D4)
 ├── config/AppConfig.kt       # env config, per-DB URLs (api-client-engineer)
 ├── routes/ChatRoutes.kt      # Bruno-facing API + log points 1/5 (api-client-engineer)
 ├── client/deepseek/          # Koog client + agent + tool registration (koog-engineer)
 │   ├── DeepSeekClient.kt     #   Koog DeepSeekLLMClient + PromptExecutor
 │   ├── TurbofaAgent.kt       #   AIAgent + singleRunStrategy + non-empty tools
-│   └── DeepSeekModels.kt     #   ChatMessage (role, content)
+│   └── DeepSeekModels.kt     #   ChatMessage(role: String, content: String) — 5d
 ├── tool/FuelingInfoTool.kt   # Koog tool handler → data-engineer queries (koog-engineer)
 ├── service/ChatService.kt    # orchestration glue (kotlin-engineer)
 ├── history/                  # ChatHistoryStore, cache, text file (kotlin-engineer)
@@ -109,10 +125,10 @@ Dependency direction: config ← db/client/history/tool ← service ← routes.
 
 | Agent | Scope |
 |-------|-------|
-| koog-engineer | Koog DeepSeek client, TurbofaAgent (AIAgent + singleRunStrategy, D1), get_fueling_info descriptor + registration, non-empty tools invariant, fueling_id embedding, log points 2/3/4 (point 3 in the Receive phase, D3) |
+| koog-engineer | Koog DeepSeek client, TurbofaAgent (AIAgent + singleRunStrategy, D1), get_fueling_info descriptor + registration, non-empty tools invariant, log points 2/3/4 (point 3 in the Receive phase, D3) |
 | api-client-engineer | Bruno-facing API: ChatRoutes DTOs (prompt + optional fueling_id as string, D6), AppConfig incl. per-DB URL derivation (D7), content-negotiation wiring, log points 1/5 |
-| logging-engineer | RequestLogger interface + SLF4J/logback implementation, exact R8 format, secret redaction, logback.xml (D4) |
-| kotlin-engineer | Application glue: ChatService, history (ChatHistoryStore + cache + text file cleared on restart), Application.kt wiring |
+| logging-engineer | RequestLogger interface + SLF4J/logback implementation, exact R8 format, secret redaction, logback.xml (D4; freshness is NOT a logback feature — see 5a) |
+| kotlin-engineer | Application glue: ChatService (incl. fueling_id embedding into the outgoing message, R9 — the single embedding point), history (ChatHistoryStore + cache + text file cleared on restart), Application.kt wiring + startup truncation of logs/turbofa.log (D4) |
 | data-engineer | Read-only JDBC: DataSourceFactory (three DataSources, D7), FuelingDataSource (the queries of 5f, SELECT only) |
 | test-engineer | Unit tests: agent contract, ChatService flow (with/without fueling_id), RequestLogger format/redaction, history, DTO validation |
 | reviewer | Diff review gate for every task; verifies no DDL/DML anywhere (R5) |
@@ -142,10 +158,31 @@ interface RequestLogger {
 }
 ```
 
-`src/main/resources/logback.xml` (exists, keep): a single FILE appender
-`logs/turbofa.log` (append=false, daily rotation, maxHistory 7) attached ONLY to the
-R2 logger `com.eduai.turbofa.requestlog` with pattern `%msg%n`; CONSOLE for the rest;
-root INFO; com.zaxxer.hikari / io.netty / io.ktor at WARN (D4).
+`src/main/resources/logback.xml` (keep): a single FILE appender `logs/turbofa.log`
+(daily rotation, maxHistory 7) attached ONLY to the R2 logger
+`com.eduai.turbofa.requestlog` with pattern `%msg%n`; CONSOLE for the rest; root INFO;
+com.zaxxer.hikari / io.netty / io.ktor at WARN (D4).
+
+**Fresh log per run (D4, corrected 2026-09-23; E4).** logback 1.6.3 does not honor
+`append=false` on a RollingFileAppender: `RollingFileAppender.start()` warns
+"Append mode is mandatory for RollingFileAppender. Defaulting to append=true." and
+forces append=true (verified in the logback-core 1.6.3 sources, the resolved jar, and
+a live run — the `<append>false</append>` attribute is inert). The application
+therefore truncates `logs/turbofa.log` itself at startup — `Application.kt`, owned by
+kotlin-engineer (T9), alongside the R4 history-file clear. The truncation MUST run
+**before the process creates its first SLF4J logger** (in Application.kt: a top-level
+initializer declared above the file's `log` property; doing it in `main()` is too
+late, because `ApplicationKt`'s `log` property — and thus logback's configuration —
+is initialized before `main()` runs). Ordering is a correctness requirement, not
+style: if the file is truncated after logback has read it, TimeBasedRollingPolicy
+takes the stale file's lastModified as its initial rolling period, and the first R2
+event rolls the now-empty file over the name `turbofa.<previous-day>.log`, clobbering
+an existing archive (verified). Truncated first, the active file is empty and
+current-day, no rollover fires, and the appender's O_APPEND writes start at offset 0:
+`logs/turbofa.log` then contains exactly the current run's lines. The inert
+`<append>false</append>` attribute is removed from logback.xml and replaced by a
+comment pointing at the startup truncation (logging-engineer; cosmetic, no behavior
+change — see D4). Rotation (daily) and maxHistory 7 are unchanged.
 
 ### 5b. resources/tools/get_fueling_info.json
 
@@ -189,8 +226,19 @@ interface TurbofaAgent {
 - `ChatService` depends on this interface, not on Koog types (R10).
 - History is passed as one Prompt with system/user/assistant roles; no Koog session
   state; ChatHistoryStore is the single source of truth (D2).
-- With fueling_id present, ChatService embeds it into the DeepSeek message (R9);
-  without it, the message list stays a plain dialogue.
+- With fueling_id present, ChatService embeds it into the DeepSeek message (R9) —
+  ChatService is the ONLY embedding point: `chat(messages)` receives the fully built
+  list and has no fueling_id parameter, so the agent must not embed it again; without
+  it, the message list stays a plain dialogue.
+
+`ChatMessage` is T4's plain data class (`client/deepseek/DeepSeekModels.kt`), with
+**String** roles — no enum — exactly as ChatService constructs it (T7, named args):
+
+```kotlin
+data class ChatMessage(val role: String, val content: String) // "system" | "user" | "assistant"
+```
+
+The agent maps those role strings to Koog's SystemMessage/UserMessage/AssistantMessage.
 
 ### 5e. History (R4)
 
@@ -221,9 +269,14 @@ maximumPoolSize 5 each, plain JDBC PreparedStatements, closed in finally blocks.
 5. `SELECT * FROM vendor_fueling_orders WHERE fueling_id = ?` — vendors DB,
    best-effort: same UUID key space, rows exist only for a subset of fuelings (D9).
 
-Rows are returned as raw column maps (no domain classes — R10) and serialized as-is;
-timestamps stay opaque (heterogeneous epoch formats). LIMITs enforce token efficiency
-(R11).
+Return types (pinned): queries 1/3/5 return `Map<String, Any?>?` — null when the row is
+absent; queries 2/4 return `List<Map<String, Any?>>`. A row is an ordered column-label →
+JDBC-value map (no domain classes, R10; jsonb unwrapped to text, other values opaque so
+the heterogeneous epoch timestamps stay as-is). `FuelingInfoTool` serializes them as one
+JSON object keyed by the table names — `{"fuelings": …, "payments": […], "fueling_orders":
+…, "fueling_events": […], "vendor_fueling_orders": …}` — an absent single row becomes JSON
+`null` and an empty list `[]`; `payments` is `null` when the fueling row is missing (no
+user_id to scope by, D8). LIMITs enforce token efficiency (R11).
 
 ## 6. Discovered external schema (2026-09-23, read-only)
 
@@ -260,8 +313,13 @@ card_binding_id text NULL, card_binding_type text NULL, sbp_subscription_id text
   vendor_gas_station_id text, vendor_fuel_price numeric, email text NULL,
   phone text NULL, date_create text, created_at numeric
 
-**fueling_id type: TEXT (UUID)** everywhere it appears, e.g.
-`99f068ca-ac6a-43fb-a53b-d2e7a573cfe2`. Verified joins: `fueling_orders.fueling_id`
+**fueling_id type: TEXT** everywhere it appears — normally a UUID, e.g.
+`99f068ca-ac6a-43fb-a53b-d2e7a573cfe2`, but not universally: one known non-hex key
+exists in `vendor_fueling_orders` — `gpn7a264-61ab-4622-983b-1ed62961a679`, the single
+non-UUID of its 37 rows (live-verified 2026-09-23; also T11's vendor-only fixture).
+Ids therefore stay String end-to-end (D6); the UUID guard in ChatRoutes applies to the
+Bruno-facing contract only — a non-hex `fueling_id` from Bruno gets 400, intentionally
+(E5). Verified joins: `fueling_orders.fueling_id`
 and `fueling_events.fueling_id` = `fuelings.fueling_id` (1:1 and ~4 rows per fueling).
 Unverified/no link: `payments.order_id` (0/10), `payments` ↔ fueling (user_id is the
 only working link), `fuelings.vendor_fueling_order_id` ↔ vendor tables (0 matches).
@@ -289,11 +347,25 @@ logger attached there would silently never run.
 Alternatives: Transform/Parse hooks (rejected — dead code); logging from the call
 site (rejected — misses what Koog actually sends/receives).
 
-**D4 — A single FILE appender on logs/turbofa.log, attached only to the R2 logger.**
-Why: logback 1.6.3 forbids two appenders on one file, and R2 traffic must not pollute
-the console (R8).
-Alternatives: R2 also on CONSOLE (rejected — mixes R2 into operator logs); root's
-file for R2 (rejected — forbidden, one file one appender).
+**D4 — A single FILE appender on logs/turbofa.log, attached only to the R2 logger;
+the application truncates the file at startup, before the first SLF4J logger
+(corrected 2026-09-23, E4).**
+Why: logback 1.6.3 forbids two appenders on one file, R2 traffic must not pollute the
+console (R8), and the file must be fresh per run (T12's "exactly five R2 log lines"
+would otherwise count previous runs). logback 1.6.3 hard-forces append=true on
+RollingFileAppender, so freshness cannot come from the config; it comes from an
+app-side truncation in `Application.kt` (kotlin-engineer, T9), mirroring R4's
+history-file clear, ordered before the first `LoggerFactory` call (5a explains the
+ordering evidence).
+Alternatives: rely on `append=false` (rejected — impossible in logback 1.6.3, the
+attribute is silently ignored); plain FileAppender with append=false (rejected —
+loses daily rotation and maxHistory 7, half of D4's intent); custom
+RollingFileAppender subclass forcing append=false (rejected — a new class for a
+config quirk, R10); `cleanHistoryOnStart` (rejected — deletes archived files, never
+truncates the active file); truncating in `main()`/after logback initialization
+(rejected — on a day boundary the first R2 event renames the emptied file over an
+existing archive, verified); R2 also on CONSOLE (rejected — mixes R2 into operator
+logs); root's file for R2 (rejected — forbidden, one file one appender).
 
 **D5 — received_at = the moment the DeepSeek response is received, not the INSERT
 time and not the tool-call time.**
@@ -333,7 +405,7 @@ the result may be empty.
 Alternatives: drop the table (rejected — loses data when present); join via
 fuelings.vendor_fueling_order_id (rejected — verified 0 matches).
 
-## 8. Escalations to the stakeholder (recorded, not silently "fixed")
+## 8. Escalations and execution feedback (recorded, not silently "fixed")
 
 - **E1** — R9 says Bruno sends `fueling_id: <int>`; the real id is a TEXT UUID.
   The spec adopts string (D6); the stakeholder should confirm the Bruno contract.
@@ -342,3 +414,19 @@ fuelings.vendor_fueling_order_id (rejected — verified 0 matches).
   vendor_fueling_orders). Mapping per §6.
 - **E3** — .env DB_URL points at the `postgres` admin database; domain data lives in
   the fueling/payment/vendors databases (D7).
+- **E4 (internal, resolved by this spec — no stakeholder action)** — T9's live run
+  showed logback 1.6.3 ignores `append=false` on the RollingFileAppender, so
+  logs/turbofa.log accumulated across restarts and T12's "exactly five R2 log lines"
+  could not hold on a second run. Resolution: 5a/D4 amended — the app truncates
+  logs/turbofa.log at startup before the first logger (`Application.kt`, T9,
+  kotlin-engineer; T9 was still in progress, so no backlog re-plan and no new task),
+  and the inert attribute is dropped from logback.xml (logging-engineer). The sibling
+  weather project carries the identical latent config and has no truncation; it is a
+  precedent for the config style only, not for freshness.
+- **E5 (internal, resolved in-spec — no stakeholder action)** — §6's claim "fueling_id
+  type: TEXT (UUID) everywhere it appears" is not literally true:
+  `vendor_fueling_orders` also holds non-hex keys (live-verified 2026-09-23: one of its
+  37 rows is the legacy vendor key `gpn7a264-61ab-4622-983b-1ed62961a679`, used by
+  T11's fixtures). No code change needed — D6 already keeps ids as String end-to-end,
+  and `ChatRoutes`' UUID regex (`routes/ChatRoutes.kt`) rejects non-hex ids with 400,
+  which is intentional for the Bruno-facing contract (E1). §6 amended accordingly.

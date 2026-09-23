@@ -33,7 +33,9 @@ round-trip produces exactly the five lines required by R8.
 - Secrets never logged: Authorization header, DEEPSEEK_API_KEY, DB_PASSWORD
 - SLF4J via logback-classic 1.6.3; logger name "com.eduai.turbofa.requestlog"; the five
   R2 lines at INFO level; logback.xml routes this logger ONLY to logs/turbofa.log
-  (append=false, daily rollover, maxHistory 7) — never to the console
+  (no append attribute — logback 1.6.3 forces append=true on RollingFileAppender, so
+  freshness is app-side per E4/D4: Application.kt truncates the file at startup before
+  the first SLF4J logger; daily rollover, maxHistory 7) — never to the console
 
 ## Workflow
 1. Define the RequestLogger interface with the five methods from R8

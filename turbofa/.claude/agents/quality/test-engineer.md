@@ -36,7 +36,7 @@ specified — without touching the external DB or the network in unit tests.
    without → no tool call
 2. Unit-test history: file cleared on restart; cache and file stay consistent
 3. Unit-test RequestLogger: exact five-line format, json bodies, secret redaction
-4. Unit-test route DTOs: prompt required, fueling_id optional int
+4. Unit-test route DTOs: prompt required, fueling_id optional String UUID (D6)
 5. Run `./gradlew test`; report failures with file:line
 6. For verification-only tasks: check the diff, run the tests, report pass or findings
 

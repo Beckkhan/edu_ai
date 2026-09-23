@@ -49,6 +49,12 @@ src/main/resources/tools/      # LLM tool descriptors (get_fueling_info.json)
 logs/turbofa.log               # R2 event log (single FILE appender, truncated on restart)
 ```
 
+Each agent directory also carries its `skill.md` at
+`.claude/agents/<team>/<agent>/skill.md` (12 files, R2): craft notes, file ownership,
+and the cross-agent contracts it exchanges. skill.md files are plain markdown without
+YAML frontmatter — only files with a `name:` frontmatter value are subagent definitions,
+so a skill.md is never itself a subagent.
+
 ## Team responsibilities
 
 | Team | Agents | Responsibility |
@@ -76,11 +82,11 @@ logs/turbofa.log               # R2 event log (single FILE appender, truncated o
 | reviewer | AGENT | Quality gate with a verdict contract (approve / findings list) applied to every task. |
 | /process | SKILL | Stateless glue: reads the spec and backlog, runs the cto workflow, then exits. No state of its own. |
 
-Each AGENT additionally gets a skill.md at `.claude/agents/<team>/<agent>/skill.md` (R2)
-capturing its craft: conventions, file ownership, and cross-agent contracts — maintained
-by skill-designer. Agents need persistent scope, tool sets, and isolated context; a skill
-cannot hold ownership or authority, which is why every entity with standing deliverables
-is an agent, and only the stateless entry points are skills.
+Each AGENT has a skill.md at `.claude/agents/<team>/<agent>/skill.md` (12 files, R2)
+capturing its craft: conventions, file ownership, and the cross-agent contracts (5a–5f)
+it exchanges — maintained by skill-designer. Agents need persistent scope, tool sets, and
+isolated context; a skill cannot hold ownership or authority, which is why every entity
+with standing deliverables is an agent, and only the stateless entry points are skills.
 
 ## Workflow
 

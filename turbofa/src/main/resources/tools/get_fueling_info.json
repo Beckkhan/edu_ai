@@ -1,0 +1,11 @@
+{
+  "name": "get_fueling_info",
+  "description": "Gathers fueling data for one fueling_id: the fueling record, its user's latest payments, and vendor-side orders/events. Read-only.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "fueling_id": {"type": "string", "description": "UUID of the fueling, e.g. 99f068ca-ac6a-43fb-a53b-d2e7a573cfe2"}
+    },
+    "required": ["fueling_id"]
+  }
+}

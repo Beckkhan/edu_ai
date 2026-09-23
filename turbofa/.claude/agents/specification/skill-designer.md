@@ -17,8 +17,8 @@ when spawned, plus a skill.md capturing its craft, and each LLM tool has a descr
 contract that the Development team implements.
 
 ## Inputs
-- docs/requirements.md — R2 (agents/skills folder + rationale; a skill.md per agent),
-  R5 (SKILL vs AGENT rationale per entity, kept in .claude/README.md)
+- docs/requirements.md — R2 (agents/skills folder + rationale; a skill.md per agent;
+  the SKILL vs AGENT rationale table, kept in .claude/README.md)
 - docs/project-specification.md — agent scopes and the get_fueling_info tool contract (R7)
 - The frozen skeleton: YAML frontmatter (name, description, tools) + body
   (Role, Mission, Inputs, Outputs, Constraints, Workflow, Definition of Done)
