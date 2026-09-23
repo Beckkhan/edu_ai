@@ -9,9 +9,11 @@ in `.claude/commands/`, and this design document.
 Every agent is a **real Claude Code subagent** defined in
 `.claude/agents/<team>/<agent>.md`: YAML frontmatter (`name`, `description`, `tools`)
 plus a body following the frozen skeleton (Role, Mission, Inputs, Outputs, Constraints,
-Workflow, Definition of Done). The subagent type is the team-qualified path — e.g.
-`development/koog-engineer` — which is exactly the `owner:` value used in docs/tasks.md,
-so spawning is a 1:1 lookup.
+Workflow, Definition of Done). `.claude/agents/` is scanned recursively, but the team
+subfolder is organization only — the subagent type is the `name:` frontmatter value
+(e.g. `development/koog-engineer.md` spawns as `koog-engineer`). The
+`owner: <team>/<agent>` value in docs/tasks.md carries the team for routing; the CTO
+spawns the agent name after the slash.
 
 ## Folder map
 
@@ -88,9 +90,9 @@ is an agent, and only the stateless entry points are skills.
    `docs/project-specification.md`; task-planner decomposes it into `docs/tasks.md`
    (ordered backlog with owners, artifacts, dependencies).
 3. `/process` runs the cto in EXECUTION ONLY mode: the cto reads the spec and backlog,
-   spawns the owning agent (subagent type = the `owner: <team>/<agent>` value) per
-   runnable task, then spawns reviewer on each diff, and updates task statuses in
-   `docs/tasks.md`.
+   spawns the owning agent (subagent type = the agent name after the slash in
+   `owner: <team>/<agent>`) per runnable task, then spawns reviewer on each diff,
+   and updates task statuses in `docs/tasks.md`.
 4. Development team implements; Quality team tests and reviews; a task reaches
    `done` only after an approved review. Done-and-unchanged tasks get a reviewer
    verification pass only (R12).

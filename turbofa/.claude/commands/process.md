@@ -17,12 +17,12 @@ Any gap you find is escalated to the Specification team — never fixed inline.
 
 1. Read `docs/project-specification.md` and `docs/tasks.md`.
 2. Interpret `$ARGUMENTS`:
-   - empty or `all` — run every `todo` task whose dependencies are `done`, top-down
+   - empty or `all` — run every `pending` task whose dependencies are `done`, top-down
    - a task id (e.g. `T3`) — run only that task
 3. For each runnable task, **spawn the owning agent as a subagent** with the Task tool:
-   - subagent type = the `owner: <team>/<agent>` value verbatim — it is the agent's
-     path in `.claude/agents/` (e.g. `development/koog-engineer` → subagent type
-     `development/koog-engineer`)
+   - subagent type = the agent name after the slash in `owner: <team>/<agent>`
+     (identity comes from the `name:` frontmatter, not the folder —
+     e.g. `development/koog-engineer` → subagent type `koog-engineer`)
    - prompt = the task line, its acceptance criteria, and the contracts it depends on
    - the agent's own definition (`.claude/agents/<team>/<agent>.md`) loads automatically as its instructions
 4. **Done-and-unchanged tasks undergo verification only**: spawn the `reviewer`

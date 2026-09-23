@@ -27,7 +27,8 @@ non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R
 ## Outputs
 - client/deepseek/DeepSeekModels.kt — ChatMessage (role, content)
 - client/deepseek/DeepSeekClient.kt — Koog DeepSeekLLMClient + PromptExecutor, close()
-- client/deepseek/TurbofaAgent.kt — chat entry point backed by AIAgent + chatAgentStrategy;
+- client/deepseek/TurbofaAgent.kt — chat entry point backed by AIAgent +
+  singleRunStrategy (spec D1, NOT chatAgentStrategy — it forces tool calls);
   when fueling_id is present, embeds it into the DeepSeek message (R9)
 - src/main/resources/tools/get_fueling_info.json — tool descriptor (R7 contract)
 - tool/FuelingInfoTool.kt — Koog tool handler → data-engineer's read-only queries
@@ -40,15 +41,17 @@ non-empty tools array (R7), and fueling_id embedded into the DeepSeek message (R
   if the tool set is empty (R7: "tools": [] is not acceptable)
 - get_fueling_info only reads — the tool must never issue DDL or DML
 - Log points 2/3/4 via RequestLogger: "Request to Deepseek", "Response from Deepseek",
-  "Tool call" (only when a tool is actually invoked), json bodies (R8)
+  "Tool call" (only when a tool is actually invoked), json bodies (R8). Point 3 is
+  emitted in the Receive phase of the response pipeline (spec D3 — Transform/Parse
+  phases do not fire for Koog)
 - Stateless: no mutable conversation fields; each chat() call receives the full message list
 - Token efficiency (R11): minimal messages, no repeated tool results
 
 ## Workflow
 1. Keep DeepSeekClient (DeepSeekLLMClient + MultiLLMPromptExecutor) as the agent's executor
 2. Create resources/tools/get_fueling_info.json per the skill-designer's format contract
-3. Build TurbofaAgent: AIAgent + chatAgentStrategy, model from AppConfig; embed
-   fueling_id into the DeepSeek message when the request carries one
+3. Build TurbofaAgent: AIAgent + singleRunStrategy (spec D1), model from AppConfig;
+   embed fueling_id into the DeepSeek message when the request carries one
 4. Register tools from resources/tools/*.json; fail fast on an empty tool set
 5. Implement the FuelingInfoTool handler → data-engineer queries (fueling, payment,
    vendors by fueling_id)

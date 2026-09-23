@@ -23,7 +23,7 @@ never alter the specification itself.
 
 ## Outputs
 - Executed tasks: each task routed to the agent named as its owner in docs/tasks.md
-- Updated docs/tasks.md: task statuses advanced (todo → in progress → done), with notes on results
+- Updated docs/tasks.md: task statuses advanced (pending → in progress → done), with notes on results
 - Escalations: blockers or spec gaps reported back to the Specification team (not fixed inline)
 
 ## Constraints
@@ -37,13 +37,13 @@ never alter the specification itself.
 
 ## Workflow
 1. On /process: load docs/project-specification.md and docs/tasks.md
-2. Find all tasks with status `todo` whose dependencies are `done`
+2. Find all tasks with status `pending` whose dependencies are `done`
 3. For each such task, spawn the owning agent as a subagent (Task tool; subagent type =
-   the `owner: <team>/<agent>` value verbatim — it is the agent's path in
-   `.claude/agents/`, e.g. `development/koog-engineer`), with a prompt containing
-   the task line, its acceptance criteria, and the contracts it depends on. The agent's
-   own definition (.claude/agents/<team>/<agent>.md) is loaded as its instructions
-   automatically
+   the agent name after the slash in `owner: <team>/<agent>` — identity comes from the
+   `name:` frontmatter, not the folder; e.g. `development/koog-engineer` → subagent
+   `koog-engineer`), with a prompt containing the task line, its acceptance criteria,
+   and the contracts it depends on. The agent's own definition
+   (.claude/agents/<team>/<agent>.md) is loaded as its instructions automatically
 4. Spawn reviewer on the task's diff; on approve, mark the task `done` with a note and
    set `verified`; on findings, hand the task back to the owner agent with the findings
 5. If a task changes a downstream contract, flag affected tasks for Specification team re-planning

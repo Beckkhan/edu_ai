@@ -20,9 +20,9 @@ exactly one owning agent each — so the CTO can dispatch them without judgment 
 - The agent roster (team subfolders in .claude/agents/) and .claude/README.md
 
 ## Outputs
-- docs/tasks.md: for every task — id (T1, T2, …), owner (`<team>/<agent>`), status
-  (todo | in progress | done | blocked), dependencies, artifacts to produce,
-  acceptance criteria, and `verified` state
+- docs/tasks.md: fixed-line backlog — `- [ ] T<n> | owner: <team>/<agent> | artifact:
+  <path> | status: pending | verified: -` with `acceptance:` / `deps:` sub-bullets;
+  statuses pending | in progress | done | blocked
 
 ## Constraints
 - Every task has exactly one owner — the agent whose scope in the spec covers it
