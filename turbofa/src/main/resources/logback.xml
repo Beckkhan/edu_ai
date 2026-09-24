@@ -2,20 +2,27 @@
 <configuration>
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- R2 events carry their own date/time and label, so FILE uses %msg%n.
-         FILE is attached ONLY to the R2 logger: logback forbids two appenders
-         on one file, and R2 traffic must not pollute the console (R8). -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- R2 events carry their own date/time and label (5a, D10), so both R2 appenders
+         use %msg%n — a pattern here would double the timestamp.
+         Two appenders on one file is forbidden by logback (one-file rule), and writing
+         root lines through the %msg%n FILE appender would leave them without a date/time,
+         so FILE stays attached to the R2 logger only; the root logger keeps CONSOLE. -->
+    <appender name="R2_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="R2_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/turbofa.log</file>
         <!-- No <append>false</append> here: logback 1.6.3 forces append=true on
-             RollingFileAppender (E4, D4 corrected 2026-09-23). Freshness is
-             app-side: Application.kt truncates logs/turbofa.log at startup,
-             before the first SLF4J logger initializes. This appender always
-             appends. -->
+             RollingFileAppender (E4, D10). Freshness is app-side: Application.kt
+             truncates logs/turbofa.log at startup, before the first SLF4J logger
+             initializes. This appender always appends. -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>logs/turbofa.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>7</maxHistory>
@@ -25,8 +32,10 @@
         </encoder>
     </appender>
 
+    <!-- D10: the R2 logger writes to BOTH sinks — terminal and file. -->
     <logger name="com.eduai.turbofa.requestlog" level="INFO" additivity="false">
-        <appender-ref ref="FILE"/>
+        <appender-ref ref="R2_CONSOLE"/>
+        <appender-ref ref="R2_FILE"/>
     </logger>
 
     <!-- Noisy libraries at WARN -->

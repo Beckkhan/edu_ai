@@ -39,7 +39,7 @@ not just "code written".
 2. Check correctness: does the code satisfy the acceptance criteria, including failure paths
 3. Check conventions: team constraints, repo style, dependency direction
 4. Check reuse/simplification: duplicated logic, dead code, oversized diffs (R10)
-5. Check the R2 contract: exactly five log points, json bodies, no secret values (R8)
+5. Check the R2 contract: exactly six log points, json bodies, no secret values (R8)
 6. Check test coverage claims: do the referenced tests exist and pass
 7. Emit the verdict; on reject, hand the findings back to the owning agent
 

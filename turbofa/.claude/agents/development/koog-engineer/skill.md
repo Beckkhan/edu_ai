@@ -21,10 +21,12 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
   `tools` array containing `get_fueling_info`.
 - Descriptor 5b: implement the skill-designer format exactly — `fueling_id` is
   `{"type": "string"}` (UUID, D6), `required: ["fueling_id"]`; never an int.
-- R8 log call sites: 2 "Request to Deepseek" (request body), 3 "Response from Deepseek"
-  in the Receive phase of the response pipeline (D3 — Transform/Parse never fire for
-  Koog, so logging there is dead code), 4 "Tool call" only on an actual invocation. All
-  through the 5a `RequestLogger`; never log the Authorization header or API key.
+- R8 log call sites: 2 "Request from backend to DeepSeek" (request body),
+  3 "Response from DeepSeek to backend" in the Receive phase of the response pipeline
+  (D3 — Transform/Parse never fire for Koog, so logging there is dead code),
+  4 "Request from backend to Postgres" only on an actual invocation, 4b "Response from
+  Postgres to backend" (the tool result). All through the 5a `RequestLogger`; never log
+  the Authorization header or API key.
 - Tool handler (T2): `FuelingInfoTool` delegates to the T3 queries and returns JSON —
   fuelings row + user-scoped payments (LIMIT 10, D8) + fueling_orders + fueling_events
   (LIMIT 20) + vendor_fueling_orders (best-effort, D9). SELECT only.
@@ -58,5 +60,6 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 - Startup fails if `resources/tools/` yields an empty tool set; the request `tools`
   array is never empty.
 - With `fueling_id`: the tool fires and the summary follows; without: no tool call.
-- Three R2 lines (2/3/4) appear with json bodies; "Tool call" only when invoked.
+- Four R2 lines (2/3/4/4b) appear with json bodies; the Postgres pair (4/4b) only when
+  the tool is invoked.
 - Grep the codebase for hand-written DeepSeek HTTP outside the logging factory → none.

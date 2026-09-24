@@ -55,6 +55,12 @@ Artifact paths: `.kt` files are relative to `src/main/kotlin/com/eduai/turbofa/`
 - [x] T15 | owner: specification/spec-writer | artifact: docs/README.md | status: done | verified: ok
   - acceptance: README describes each documentation file in docs/ (requirements.md, project-specification.md, tasks.md), styled similarly to the weather project's docs README; stakeholder-requested 2026-09-23
   - note: requested by the stakeholder during /process execution; executed by the CTO as a routed task
+- [x] T16 | owner: development/koog-engineer | artifact: src/main/kotlin/com/eduai/turbofa/client/deepseek/TurbofaAgent.kt | status: done | verified: ok
+  - acceptance: SYSTEM_PROMPT expanded — respond in the same language as the user; plain text WITHOUT any markdown; 3-5 sentences covering fueling id (short form) and status, fuel type/volume/price per liter/total amount, payment type/method/status, station id/name/brand/location, fueling time range; only factual tool-result data, no analysis or recommendations
+  - note: requested by the stakeholder during post-delivery tuning
+- [x] T17 | owner: specification/skill-designer | artifact: .claude/agents (R2 label sync) | status: done | verified: ok
+  - acceptance: old R2 labels ("Request to Deepseek", "Response from Deepseek", "Tool call") replaced with the from/to direction labels of contract 5a/D10 in every .claude/agents file that carried them; point counts updated five → six; repeat grep returns zero matches
+  - note: documentation synced with contract 5a/D10
 
 ## Coverage
 

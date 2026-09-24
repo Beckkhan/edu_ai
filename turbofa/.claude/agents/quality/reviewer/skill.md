@@ -13,7 +13,7 @@ cross-agent contracts exchanged on the project (source: docs/project-specificati
   the owner's Definition of Done, not extra criteria.
 - Review order: acceptance criteria including failure paths → conventions and dependency
   direction (`config ← db/client/history/tool ← service ← routes`) → R10
-  simplification/dead code/diff size → R8 five log points, json bodies, no secrets → R5
+  simplification/dead code/diff size → R8 six log points, json bodies, no secrets → R5
   grep for DDL/DML across the diff → test claims actually exist and pass.
 - Scope check: the diff must touch only the task's `artifact:` paths and that owner's
   files; anything else is a finding.
@@ -23,7 +23,8 @@ cross-agent contracts exchanged on the project (source: docs/project-specificati
 - R12 mode: for done-and-unchanged tasks verify the existing diff still satisfies its
   acceptance criteria and re-run its tests — never re-execute the owner agent.
 - T12 final scenario is the end-to-end gate: run the app and send two Bruno requests
-  (prompt only; prompt + UUID). Verify exactly five R2 lines with json bodies, a
+  (prompt only; prompt + UUID). Verify the six R2 log points with json bodies (4 lines
+  for a plain dialogue, 8 for a tool-call run), a
   non-empty tools array, the tool fired for the second request with data aggregated from
   the three DBs, no secrets in logs, and no DDL/DML anywhere in the codebase.
 

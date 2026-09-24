@@ -5,7 +5,7 @@ Solution document for the turbofa fueling-data chat backend (`com.eduai.turbofa`
 Written by the Specification team (spec-writer, architect as consultant) from
 `docs/requirements.md`; external schema discovered 2026-09-23 (read-only, see §6).
 Executed by the CTO via `/process` against `docs/tasks.md`. Logback 1.6.3 append
-behavior verified 2026-09-23 against the resolved jars and a live run (§5a/D4, E4).
+behavior verified 2026-09-23 against the resolved jars and a live run (§5a/D10, E4).
 
 ## 1. Goal
 
@@ -22,10 +22,10 @@ through `.claude` agents via `/process` — no hand-written code.
   creation, no writes of any kind (R5).
 - All DeepSeek calls via Koog (R6); every backend→DeepSeek request carries a
   non-empty tools array (R7).
-- Five R2 log points with json bodies, written only to logs/turbofa.log (R8); per run
-  that is 4 log events for a plain dialogue and 7 when a tool call is made (3.2); the
-  file is truncated at startup so one run's file holds exactly that run's events
-  (D4, 5a).
+- Six R2 log points with single-line compact json bodies, written to BOTH the console
+  and logs/turbofa.log (R8, D10); per run that is 4 log events for a plain dialogue
+  and 8 when a tool call is made (3.2); the file is truncated at startup so one run's
+  file holds exactly that run's events (E4, 5a).
 - Message history in a local cache + text file; the file is cleared on restart (R4).
 
 ## 2. Tech stack
@@ -39,7 +39,7 @@ Versions from build.gradle.kts (no changes without a task):
 | LLM | **Koog 1.2.0 (mandatory for ALL DeepSeek interactions, R6)**: koog-agents, prompt-executor-deepseek-client 1.2.0-beta, http-client-ktor |
 | Serialization | kotlinx-serialization-json 1.11.0 |
 | DB access | Plain JDBC (postgresql 42.7.7) + HikariCP 6.2.1 — read-only, external |
-| Logging | SLF4J + logback-classic 1.6.3 (RollingFileAppender forces append=true — D4) |
+| Logging | SLF4J + logback-classic 1.6.3 (RollingFileAppender forces append=true — E4; R2 on CONSOLE + FILE — D10) |
 | Tests | JUnit 5 (kotlin-test), MockK 1.14.11, kotlinx-coroutines-test 1.8.1 |
 | Infra | No docker-compose — the database is external and already running |
 
@@ -73,34 +73,38 @@ TurbofaAgent ──tool call──▶ FuelingInfoTool ──SELECT──▶ fuel
 - The server binds `0.0.0.0:8080`; Bruno targets `http://localhost:8080/chat`
   (pinned from T9, the same binding as the sibling weather project).
 
-### 3.2 Logging boundaries (R8)
+### 3.2 Logging boundaries (R8, D10)
 
-All five lines go through one logger interface (contract 5a), owned by logging-engineer:
+All six lines go through one logger interface (contract 5a), owned by logging-engineer:
 
 | # | Line | Emitted by |
 |---|------|-----------|
 | 1 | `Request from Bruno to backend` | ChatRoutes (api-client-engineer) |
-| 2 | `Request to Deepseek` | TurbofaAgent (koog-engineer) |
-| 3 | `Response from Deepseek` | TurbofaAgent — Receive phase of the response pipeline (koog-engineer, D3) |
-| 4 | `Tool call` (only if a tool is actually used) | tool handler (koog-engineer) |
+| 2 | `Request from backend to DeepSeek` | TurbofaAgent (koog-engineer) |
+| 3 | `Response from DeepSeek to backend` | TurbofaAgent — Receive phase of the response pipeline (koog-engineer, D3) |
+| 4 | `Request from backend to Postgres` (only if a tool is actually used) | tool handler (koog-engineer) |
+| 4b | `Response from Postgres to backend` | tool handler — aggregation result (koog-engineer) |
 | 5 | `Response from backend to Bruno` | ChatRoutes (api-client-engineer) |
 
-Event counts per run (R8's "five log points" counts the defined points, not a run's
-lines): a plain-dialogue run emits 4 events — 1,2,3,5 — and a tool-call run emits 7 —
-1,2,3,4,2,3,5 — because R9's chain mandates two DeepSeek exchanges (tool call, then
+Event counts per run (R8's log-point count names the defined points, not a run's
+lines): a plain-dialogue run emits 4 events — 1,2,3,5 — and a tool-call run emits 8 —
+1,2,3,4,4b,2,3,5 — because R9's chain mandates two DeepSeek exchanges (tool call, then
 summary) and D3 fires point 3 for each DeepSeek response.
 
 Secrets (DEEPSEEK_API_KEY, DB_PASSWORD, Authorization) never appear in any log line.
 
-`logs/turbofa.log` is truncated at startup before logback opens it, so a run's file
-contains only that run's events (D4, 5a). Application.kt's own log lines go to the
-root CONSOLE logger, never to FILE (which is attached only to the R2 logger).
+R2 events go to BOTH sinks (D10): the CONSOLE (R2 console appender) and
+`logs/turbofa.log` (R2 file appender). `logs/turbofa.log` is truncated at startup
+before logback opens it, so a run's file contains only that run's events (E4, 5a).
+Application.kt's own log lines go to the root CONSOLE logger, never to the R2 FILE
+appender (logback forbids two appenders on one file, and %msg%n would leave root
+lines without a date/time).
 
 ### 3.3 Module map
 
 ```
 src/main/kotlin/com/eduai/turbofa/
-├── Application.kt            # wiring + startup truncation of logs/turbofa.log (kotlin-engineer, D4)
+├── Application.kt            # wiring + startup truncation of logs/turbofa.log (kotlin-engineer, E4)
 ├── config/AppConfig.kt       # env config, per-DB URLs (api-client-engineer)
 ├── routes/ChatRoutes.kt      # Bruno-facing API + log points 1/5 (api-client-engineer)
 ├── client/deepseek/          # Koog client + agent + tool registration (koog-engineer)
@@ -115,7 +119,7 @@ src/main/kotlin/com/eduai/turbofa/
 │   └── FuelingDataSource.kt  #   the five SELECTs of 5f
 └── logging/RequestLogger.kt  # R2 logger interface + impl (logging-engineer)
 src/main/resources/
-├── logback.xml               # exists: R2 → FILE only (D4)
+├── logback.xml               # exists: R2 → CONSOLE + FILE, both %msg%n (D10)
 └── tools/get_fueling_info.json  # NEW: tool descriptor (koog-engineer)
 ```
 
@@ -127,8 +131,8 @@ Dependency direction: config ← db/client/history/tool ← service ← routes.
 |-------|-------|
 | koog-engineer | Koog DeepSeek client, TurbofaAgent (AIAgent + singleRunStrategy, D1), get_fueling_info descriptor + registration, non-empty tools invariant, log points 2/3/4 (point 3 in the Receive phase, D3) |
 | api-client-engineer | Bruno-facing API: ChatRoutes DTOs (prompt + optional fueling_id as string, D6), AppConfig incl. per-DB URL derivation (D7), content-negotiation wiring, log points 1/5 |
-| logging-engineer | RequestLogger interface + SLF4J/logback implementation, exact R8 format, secret redaction, logback.xml (D4; freshness is NOT a logback feature — see 5a) |
-| kotlin-engineer | Application glue: ChatService (incl. fueling_id embedding into the outgoing message, R9 — the single embedding point), history (ChatHistoryStore + cache + text file cleared on restart), Application.kt wiring + startup truncation of logs/turbofa.log (D4) |
+| logging-engineer | RequestLogger interface + SLF4J/logback implementation, exact R8 format (single-line, compact), secret redaction, logback.xml (D10: CONSOLE + FILE; freshness is NOT a logback feature — see 5a) |
+| kotlin-engineer | Application glue: ChatService (incl. fueling_id embedding into the outgoing message, R9 — the single embedding point), history (ChatHistoryStore + cache + text file cleared on restart), Application.kt wiring + startup truncation of logs/turbofa.log (E4) |
 | data-engineer | Read-only JDBC: DataSourceFactory (three DataSources, D7), FuelingDataSource (the queries of 5f, SELECT only) |
 | test-engineer | Unit tests: agent contract, ChatService flow (with/without fueling_id), RequestLogger format/redaction, history, DTO validation |
 | reviewer | Diff review gate for every task; verifies no DDL/DML anywhere (R5) |
@@ -137,15 +141,12 @@ Dependency direction: config ← db/client/history/tool ← service ← routes.
 
 ### 5a. R2 log format and logger interface
 
-An R2 event is multi-line (date/time = ISO-8601 local); the label line is followed by
-pretty-printed JSON (2-space indent), never an ellipsis (R8):
+An R2 event is a SINGLE LINE (D10): "<timestamp> <label>: <compact json body>",
+timestamp = `yyyy-MM-dd HH:mm:ss.SSS` (local, milliseconds), body = compact JSON
+(prettyPrint = false), never an ellipsis, never a truncated body (R8):
 
 ```
-<date/time> Request from Bruno to backend:
-{
-  "prompt": "...",
-  "fueling_id": "..."
-}
+2026-09-24 10:15:30.123 Request from backend to DeepSeek: {"model":"deepseek-v4","messages":[...]}
 ```
 
 ```kotlin
@@ -154,16 +155,19 @@ interface RequestLogger {
     fun deepSeekRequest(json: String)
     fun deepSeekResponse(json: String)
     fun toolCall(json: String)      // called only on an actual tool invocation
+    fun postgresResponse(json: String) // the aggregation result coming back from Postgres
     fun brunoResponse(json: String)
 }
 ```
 
-`src/main/resources/logback.xml` (keep): a single FILE appender `logs/turbofa.log`
-(daily rotation, maxHistory 7) attached ONLY to the R2 logger
-`com.eduai.turbofa.requestlog` with pattern `%msg%n`; CONSOLE for the rest; root INFO;
-com.zaxxer.hikari / io.netty / io.ktor at WARN (D4).
+`src/main/resources/logback.xml`: the R2 logger `com.eduai.turbofa.requestlog` is
+attached to BOTH sinks — an R2 CONSOLE appender and a FILE appender `logs/turbofa.log`
+(daily rotation, maxHistory 7) — both with pattern `%msg%n` (the event carries its own
+timestamp). The root logger keeps the CONSOLE appender with pattern
+`%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n`; root INFO;
+com.zaxxer.hikari / io.netty / io.ktor at WARN (D10).
 
-**Fresh log per run (D4, corrected 2026-09-23; E4).** logback 1.6.3 does not honor
+**Fresh log per run (E4, corrected 2026-09-23; formerly half of D4).** logback 1.6.3 does not honor
 `append=false` on a RollingFileAppender: `RollingFileAppender.start()` warns
 "Append mode is mandatory for RollingFileAppender. Defaulting to append=true." and
 forces append=true (verified in the logback-core 1.6.3 sources, the resolved jar, and
@@ -182,7 +186,7 @@ current-day, no rollover fires, and the appender's O_APPEND writes start at offs
 `logs/turbofa.log` then contains exactly the current run's lines. The inert
 `<append>false</append>` attribute is removed from logback.xml and replaced by a
 comment pointing at the startup truncation (logging-engineer; cosmetic, no behavior
-change — see D4). Rotation (daily) and maxHistory 7 are unchanged.
+change — see D10). Rotation (daily) and maxHistory 7 are unchanged.
 
 ### 5b. resources/tools/get_fueling_info.json
 
@@ -347,25 +351,16 @@ logger attached there would silently never run.
 Alternatives: Transform/Parse hooks (rejected — dead code); logging from the call
 site (rejected — misses what Koog actually sends/receives).
 
-**D4 — A single FILE appender on logs/turbofa.log, attached only to the R2 logger;
-the application truncates the file at startup, before the first SLF4J logger
-(corrected 2026-09-23, E4).**
-Why: logback 1.6.3 forbids two appenders on one file, R2 traffic must not pollute the
-console (R8), and the file must be fresh per run (T12's "exactly five R2 log lines"
-would otherwise count previous runs). logback 1.6.3 hard-forces append=true on
-RollingFileAppender, so freshness cannot come from the config; it comes from an
-app-side truncation in `Application.kt` (kotlin-engineer, T9), mirroring R4's
-history-file clear, ordered before the first `LoggerFactory` call (5a explains the
-ordering evidence).
-Alternatives: rely on `append=false` (rejected — impossible in logback 1.6.3, the
-attribute is silently ignored); plain FileAppender with append=false (rejected —
-loses daily rotation and maxHistory 7, half of D4's intent); custom
-RollingFileAppender subclass forcing append=false (rejected — a new class for a
-config quirk, R10); `cleanHistoryOnStart` (rejected — deletes archived files, never
-truncates the active file); truncating in `main()`/after logback initialization
-(rejected — on a day boundary the first R2 event renames the emptied file over an
-existing archive, verified); R2 also on CONSOLE (rejected — mixes R2 into operator
-logs); root's file for R2 (rejected — forbidden, one file one appender).
+**D10 — Single-line logs with from/to direction, CONSOLE + FILE both active.**
+Decision: every R2 event is one compact line "<timestamp> <label>: <compact json>"
+with from/to direction labels; the R2 logger writes to BOTH sinks (CONSOLE and
+logs/turbofa.log).
+Why: stakeholder wants to see all logs in the terminal for debugging; direction helps
+track data flow across Bruno, backend, DeepSeek, Postgres.
+Alternatives considered: (a) multi-line pretty-print (hard to read in terminal);
+(b) FILE only (not visible in terminal).
+The append=true / startup-truncation mechanics of the former D4 stay in force and are
+documented in 5a (E4).
 
 **D5 — received_at = the moment the DeepSeek response is received, not the INSERT
 time and not the tool-call time.**
@@ -417,7 +412,7 @@ fuelings.vendor_fueling_order_id (rejected — verified 0 matches).
 - **E4 (internal, resolved by this spec — no stakeholder action)** — T9's live run
   showed logback 1.6.3 ignores `append=false` on the RollingFileAppender, so
   logs/turbofa.log accumulated across restarts and T12's "exactly five R2 log lines"
-  could not hold on a second run. Resolution: 5a/D4 amended — the app truncates
+  could not hold on a second run. Resolution: 5a amended (E4) — the app truncates
   logs/turbofa.log at startup before the first logger (`Application.kt`, T9,
   kotlin-engineer; T9 was still in progress, so no backlog re-plan and no new task),
   and the inert attribute is dropped from logback.xml (logging-engineer). The sibling

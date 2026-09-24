@@ -35,6 +35,21 @@ private const val TOOLS_RESOURCE = "/tools/"
 private const val JSON_SUFFIX = ".json"
 
 /**
+ * The reply-style instruction. DeepSeek otherwise answers with heavy markdown (### headers,
+ * | tables, - lists, ** bold) that reads as visual clutter; the stakeholder wants plain
+ * readable text: 3-5 sentences with the key facts of the fueling, nothing but the tool
+ * result's data — no analysis, no recommendations.
+ */
+private const val SYSTEM_PROMPT =
+    "You are a fueling-data assistant. Respond in the same language as the user's request. " +
+        "Answer in plain text WITHOUT any markdown formatting: no headers, tables, lists, or " +
+        "bold text. Only factual data from the tool result — no analysis or recommendations. " +
+        "Write a short coherent text of 3-5 sentences covering: fueling id (short form) and " +
+        "status; fuel type, volume, price per liter, total amount; payment type, " +
+        "method/payment system, payment status; station id/name, brand, location (region, " +
+        "city); fueling time range from start to completion."
+
+/**
  * Spec 5d: the surface ChatService depends on. Tool calls execute inside the agent, so the service
  * never sees a Koog type; chat() receives the complete message list — ChatService already embedded
  * the fueling_id when the request carried one (5d, the single embedding point).
@@ -53,8 +68,9 @@ interface TurbofaAgent {
  * holds [FUELING_INFO_TOOL] — construction fails fast when no descriptor is present, so every
  * backend→DeepSeek request carries a non-empty `tools` array (R7).
  *
- * Stateless (D2): every [chat] call builds ONE fresh agent whose initial Prompt is the received
- * dialogue; no Koog session state survives a call — ChatHistoryStore is the single source of truth.
+ * Stateless (D2): every [chat] call builds ONE fresh agent whose initial Prompt is the
+ * response-style system instruction followed by the received dialogue; no Koog session state
+ * survives a call — ChatHistoryStore is the single source of truth.
  *
  * @param executor Koog executor of [DeepSeekClient] (R6)
  * @param model model resolved from DEEPSEEK_MODEL
@@ -90,8 +106,9 @@ class KoogTurbofaAgent(
         return buildAgent(historyPrompt(messages.dropLast(1))).run(promptMessage.content)
     }
 
-    /** One Prompt with the system/user/assistant roles of the received list (5d, D2). */
+    /** One Prompt: the plain-text response instruction, then the received roles (5d, D2). */
     private fun historyPrompt(history: List<ChatMessage>): Prompt = prompt("chat") {
+        system(SYSTEM_PROMPT)
         history.forEach { message ->
             when (message.role) {
                 ROLE_SYSTEM -> system(message.content)

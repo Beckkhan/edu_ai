@@ -8,15 +8,16 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 
 /**
  * R2 logging contract (docs/project-specification.md, contract 5a).
  *
- * The five call sites of spec 3.2 emit one multi-line event each; an event starts with a
- * label line "<ISO-8601 local date/time> <label>:" followed by the body as pretty-printed
- * JSON (2-space indent) - never an ellipsis, never a truncated body (R8). Events land only
- * in logs/turbofa.log through the logger "com.eduai.turbofa.requestlog" (logback.xml, D4).
+ * The six call sites of spec 3.2 emit one single-line event each:
+ * "<date/time (yyyy-MM-dd HH:mm:ss.SSS)> <label>: <compact json body>" — never
+ * pretty-printed, never an ellipsis, never a truncated body (R8). Events go to BOTH
+ * sinks: the CONSOLE (R2 console appender) and logs/turbofa.log (R2 file appender),
+ * both attached to "com.eduai.turbofa.requestlog" with pattern %msg%n — the event
+ * carries its own date/time (logback.xml, D10).
  *
  * Secrets (Authorization, DEEPSEEK_API_KEY, DB_PASSWORD) never appear in any event.
  */
@@ -28,13 +29,16 @@ interface RequestLogger {
     /** Called only when a tool is actually invoked for the request (R8). */
     fun toolCall(json: String)
 
+    /** The tool result coming back from Postgres (point 4b). */
+    fun postgresResponse(json: String)
+
     fun brunoResponse(json: String)
 }
 
 /**
  * SLF4J/logback implementation of [RequestLogger].
  *
- * @param loggerName logger the R2 file appender is attached to (D4)
+ * @param loggerName logger the R2 console and file appenders are attached to (D10)
  * @param secretValues extra secret values to mask; DEEPSEEK_API_KEY and DB_PASSWORD are
  *   always read from the environment and masked as well
  */
@@ -58,6 +62,8 @@ class Slf4jRequestLogger(
 
     override fun toolCall(json: String) = emit(LABEL_TOOL_CALL, json)
 
+    override fun postgresResponse(json: String) = emit(LABEL_POSTGRES_RESPONSE, json)
+
     override fun brunoResponse(json: String) = emit(LABEL_BRUNO_RESPONSE, json)
 
     private fun emit(label: String, json: String) {
@@ -65,15 +71,15 @@ class Slf4jRequestLogger(
     }
 
     /**
-     * One R2 event: the label line plus the redacted body as pretty-printed JSON (2-space
-     * indent). A body that is not valid JSON is written redacted and verbatim instead of
-     * being dropped - R8 forbids ellipses and truncated bodies.
+     * One R2 event: a single line "<date/time> <label>: <compact json body>" (D10). A body
+     * that is not valid JSON is written redacted and verbatim instead of being dropped —
+     * R8 forbids ellipses and truncated bodies.
      */
     internal fun formatEvent(dateTime: String, label: String, json: String): String =
-        "$dateTime $label:\n" + prettyPrinted(redact(json))
+        "$dateTime $label: " + compact(redact(json))
 
-    private fun prettyPrinted(json: String): String = try {
-        PRETTY_JSON.encodeToString(JsonElement.serializer(), PRETTY_JSON.parseToJsonElement(json))
+    private fun compact(json: String): String = try {
+        COMPACT_JSON.encodeToString(JsonElement.serializer(), COMPACT_JSON.parseToJsonElement(json))
     } catch (_: IllegalArgumentException) {
         json
     }
@@ -88,14 +94,15 @@ class Slf4jRequestLogger(
     }
 
     companion object {
-        /** Logger wired to the R2 file appender in logback.xml (D4). */
+        /** Logger wired to the R2 console and file appenders in logback.xml (D10). */
         const val LOGGER_NAME = "com.eduai.turbofa.requestlog"
 
-        // Labels exactly as R8 / spec 3.2 spell them.
+        // Labels exactly as R8 / spec 3.2 spell them (from/to direction, D10).
         const val LABEL_BRUNO_REQUEST = "Request from Bruno to backend"
-        const val LABEL_DEEPSEEK_REQUEST = "Request to Deepseek"
-        const val LABEL_DEEPSEEK_RESPONSE = "Response from Deepseek"
-        const val LABEL_TOOL_CALL = "Tool call"
+        const val LABEL_DEEPSEEK_REQUEST = "Request from backend to DeepSeek"
+        const val LABEL_DEEPSEEK_RESPONSE = "Response from DeepSeek to backend"
+        const val LABEL_TOOL_CALL = "Request from backend to Postgres"
+        const val LABEL_POSTGRES_RESPONSE = "Response from Postgres to backend"
         const val LABEL_BRUNO_RESPONSE = "Response from backend to Bruno"
 
         /** Placeholder that replaces every masked value. */
@@ -103,12 +110,12 @@ class Slf4jRequestLogger(
 
         private const val MIN_SECRET_LENGTH = 4
 
-        private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+        /** D10: "yyyy-MM-dd HH:mm:ss.SSS", local — the event starts with its own date/time. */
+        private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
 
         @OptIn(ExperimentalSerializationApi::class)
-        private val PRETTY_JSON = Json {
-            prettyPrint = true
-            prettyPrintIndent = "  "
+        private val COMPACT_JSON = Json {
+            prettyPrint = false
         }
 
         /** JSON fields whose value is a secret, e.g. {"Authorization": "Bearer ..."} or {"DB_PASSWORD": "..."}. */
@@ -134,8 +141,7 @@ class Slf4jRequestLogger(
             RegexOption.IGNORE_CASE,
         )
 
-        private fun currentTimestamp(): String =
-            LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS).format(DATE_TIME)
+        private fun currentTimestamp(): String = LocalDateTime.now().format(DATE_TIME)
 
         private fun secretsFromEnvironment(): List<String> = listOfNotNull(
             System.getenv("DEEPSEEK_API_KEY"),

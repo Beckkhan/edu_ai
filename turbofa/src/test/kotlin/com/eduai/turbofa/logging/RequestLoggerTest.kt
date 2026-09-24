@@ -5,7 +5,7 @@ import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger as LogbackLogger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
-import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -16,46 +16,51 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Unit tests of the R2 event contract (5a): the five labels, the "<date/time> <label>:" line
- * followed by pretty-printed JSON, and secret redaction.
+ * Unit tests of the R2 event contract (5a, D10): the six labels, the single-line
+ * "<date/time> <label>: <compact json>" format, and secret redaction.
  *
  * The tests use the internal formatEvent/redact hooks plus a throwaway capture logger, so no
- * event is ever written to the R2 file appender (logs/turbofa.log) and no logback config is
+ * event is ever written to the R2 appenders (console, logs/turbofa.log) and no logback config is
  * touched. Unit tests need no DB, no network and no .env.
  */
 class RequestLoggerTest {
 
-    private val dateTime = "2026-09-23T21:58:14.001"
+    private val dateTime = "2026-09-23 21:58:14.001"
 
     private fun logger(secretValues: List<String> = emptyList()): Slf4jRequestLogger =
         Slf4jRequestLogger(loggerName = CAPTURE_LOGGER, secretValues = secretValues)
 
     @Test
-    fun `all five labels keep their exact R2 wording`() {
+    fun `all six labels keep their exact R2 wording`() {
         assertEquals("Request from Bruno to backend", Slf4jRequestLogger.LABEL_BRUNO_REQUEST)
-        assertEquals("Request to Deepseek", Slf4jRequestLogger.LABEL_DEEPSEEK_REQUEST)
-        assertEquals("Response from Deepseek", Slf4jRequestLogger.LABEL_DEEPSEEK_RESPONSE)
-        assertEquals("Tool call", Slf4jRequestLogger.LABEL_TOOL_CALL)
+        assertEquals("Request from backend to DeepSeek", Slf4jRequestLogger.LABEL_DEEPSEEK_REQUEST)
+        assertEquals("Response from DeepSeek to backend", Slf4jRequestLogger.LABEL_DEEPSEEK_RESPONSE)
+        assertEquals("Request from backend to Postgres", Slf4jRequestLogger.LABEL_TOOL_CALL)
+        assertEquals("Response from Postgres to backend", Slf4jRequestLogger.LABEL_POSTGRES_RESPONSE)
         assertEquals("Response from backend to Bruno", Slf4jRequestLogger.LABEL_BRUNO_RESPONSE)
     }
 
     @Test
-    fun `an event is the date, the label with a colon, then the pretty-printed body`() {
+    fun `an event is one line - date, label with colon, then the compact body`() {
         val event = logger().formatEvent(
             dateTime,
             Slf4jRequestLogger.LABEL_BRUNO_REQUEST,
             """{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}""",
         )
 
-        val lines = event.lines()
-        assertEquals("$dateTime Request from Bruno to backend:", lines.first())
-        assertTrue(lines.size > 1, "the body is a multi-line pretty JSON block")
+        assertEquals(1, event.lines().size, "the event is a single line (D10)")
+        assertEquals(
+            "$dateTime Request from Bruno to backend: " +
+                """{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}""",
+            event,
+            "compact JSON on the same line — no pretty-print, no newlines",
+        )
         assertEquals(
             Json.parseToJsonElement("""{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}"""),
-            Json.parseToJsonElement(event.substringAfter('\n')),
+            Json.parseToJsonElement(event.substringAfter(": ")),
             "the body must parse back to the logged JSON",
         )
-        assertTrue("\n  \"prompt\"" in event, "pretty printing uses a 2-space indent (5a)")
+        assertFalse("\n" in event, "no line breaks anywhere in the event")
     }
 
     @Test
@@ -72,32 +77,34 @@ class RequestLoggerTest {
     }
 
     @Test
-    fun `each log point emits its label with an ISO-8601 local timestamp`() {
+    fun `each log point emits its label with a yyyy-MM-dd HH-mm-ss-SSS timestamp`() {
         val body = """{"prompt":"hi"}"""
         val events = capturedEvents { logger ->
             logger.brunoRequest(body)
             logger.deepSeekRequest(body)
             logger.deepSeekResponse(body)
             logger.toolCall(body)
+            logger.postgresResponse(body)
             logger.brunoResponse(body)
         }
 
-        assertEquals(5, events.size, "one event per log point")
+        assertEquals(6, events.size, "one event per log point")
         assertEquals(
             listOf(
                 Slf4jRequestLogger.LABEL_BRUNO_REQUEST,
                 Slf4jRequestLogger.LABEL_DEEPSEEK_REQUEST,
                 Slf4jRequestLogger.LABEL_DEEPSEEK_RESPONSE,
                 Slf4jRequestLogger.LABEL_TOOL_CALL,
+                Slf4jRequestLogger.LABEL_POSTGRES_RESPONSE,
                 Slf4jRequestLogger.LABEL_BRUNO_RESPONSE,
             ),
-            events.map { it.lines().first().substringAfter(' ').removeSuffix(":") },
+            events.map { it.substringAfter(' ').substringAfter(' ').substringBefore(": ") },
             "each method must emit its own R8 label (spec 3.2)",
         )
         events.forEach { event ->
-            val labelLine = event.lines().first()
-            LocalDateTime.parse(labelLine.substringBefore(' ')) // throws unless ISO-8601 local
-            assertTrue(labelLine.endsWith(":") && '\n' in event)
+            // timestamp parse throws unless the event starts with yyyy-MM-dd HH:mm:ss.SSS
+            TIMESTAMP.parse(event.take(TIMESTAMP_LENGTH))
+            assertTrue(event.lines().size == 1, "single-line event (D10)")
         }
     }
 
@@ -114,7 +121,7 @@ class RequestLoggerTest {
         assertFalse(apiKey in event, "an injected DEEPSEEK_API_KEY value must never reach the log")
         assertFalse(dbPassword in event, "an injected DB_PASSWORD value must never reach the log")
         assertTrue(Slf4jRequestLogger.MASK in event)
-        val body = Json.parseToJsonElement(event.substringAfter('\n')).jsonObject
+        val body = Json.parseToJsonElement(event.substringAfter(": ")).jsonObject
         assertEquals("hi", body.getValue("prompt").jsonPrimitive.content, "non-secret fields survive")
     }
 
@@ -128,7 +135,7 @@ class RequestLoggerTest {
 
         assertFalse("AnyVeryLongValue" in event)
         assertFalse("another-value" in event)
-        val body = Json.parseToJsonElement(event.substringAfter('\n')).jsonObject
+        val body = Json.parseToJsonElement(event.substringAfter(": ")).jsonObject
         listOf("DEEPSEEK_API_KEY", "DB_PASSWORD", "password", "token", "secret").forEach { field ->
             assertEquals(Slf4jRequestLogger.MASK, body.getValue(field).jsonPrimitive.content, field)
         }
@@ -145,7 +152,7 @@ class RequestLoggerTest {
         )
 
         assertFalse(token in event, "the Bearer token must not survive")
-        val body = Json.parseToJsonElement(event.substringAfter('\n')).jsonObject
+        val body = Json.parseToJsonElement(event.substringAfter(": ")).jsonObject
         assertEquals(
             Slf4jRequestLogger.MASK,
             body.getValue("headers").jsonObject.getValue("Authorization").jsonPrimitive.content,
@@ -179,7 +186,7 @@ class RequestLoggerTest {
         assertFalse(token in event, "the second occurrence must not survive the first Authorization match")
         assertFalse("Bearer $token" in event)
         // The body must still be the logged JSON, not the raw fallback of a mangled string
-        val body = Json.parseToJsonElement(event.substringAfter('\n')).jsonObject
+        val body = Json.parseToJsonElement(event.substringAfter(": ")).jsonObject
         assertTrue(Slf4jRequestLogger.MASK in body.getValue("note").jsonPrimitive.content)
         assertTrue(Slf4jRequestLogger.MASK in body.getValue("trace").jsonPrimitive.content)
     }
@@ -194,7 +201,7 @@ class RequestLoggerTest {
         )
 
         assertFalse(token in event)
-        val body = Json.parseToJsonElement(event.substringAfter('\n')).jsonObject
+        val body = Json.parseToJsonElement(event.substringAfter(": ")).jsonObject
         assertTrue(Slf4jRequestLogger.MASK in body.getValue("note").jsonPrimitive.content)
         assertEquals("hi", body.getValue("prompt").jsonPrimitive.content, "the rest of the body must survive")
     }
@@ -214,9 +221,10 @@ class RequestLoggerTest {
             "raw response, token=$token",
         )
 
-        assertEquals("$dateTime Response from Deepseek:", event.lines().first())
+        assertTrue(event.startsWith("$dateTime Response from DeepSeek to backend: "))
         assertFalse(token in event)
         assertTrue("raw response, token=${Slf4jRequestLogger.MASK}" in event, "the body must not be dropped")
+        assertEquals(1, event.lines().size, "single-line event (D10)")
     }
 
     /** Runs [block] against a throwaway logger and returns the formatted events it emitted. */
@@ -236,7 +244,12 @@ class RequestLoggerTest {
     }
 
     private companion object {
-        /** Deliberately not the R2 logger name: no test event reaches logs/turbofa.log (D4). */
+        /** Deliberately not the R2 logger name: no test event reaches the R2 appenders (D10). */
         const val CAPTURE_LOGGER = "turbofa.test.requestlog.capture"
+
+        private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+
+        /** "yyyy-MM-dd HH:mm:ss.SSS" is exactly 23 characters. */
+        private const val TIMESTAMP_LENGTH = 23
     }
 }

@@ -51,7 +51,7 @@ class FuelingInfoTool(
         // fueling id), so the payments are scoped to the fueling's user.
         val userId = fueling?.get("user_id") as? String
 
-        return buildJsonObject {
+        val result = buildJsonObject {
             put("fuelings", rowToJson(fueling))
             // null when there is no fueling row: without user_id the query cannot be scoped
             put(
@@ -63,6 +63,11 @@ class FuelingInfoTool(
             // D9: best-effort — the table covers only a subset of fuelings, a missing row is normal
             put("vendor_fueling_orders", rowToJson(dataSource.vendorFuelingOrdersById(args.fuelingId)))
         }.toString()
+
+        // R2 log point 4b (spec 3.2, D10): the aggregated result coming back from Postgres.
+        requestLogger.postgresResponse(result)
+
+        return result
     }
 
     /** The result already is JSON text; it must reach the model unquoted and unescaped (R11). */
