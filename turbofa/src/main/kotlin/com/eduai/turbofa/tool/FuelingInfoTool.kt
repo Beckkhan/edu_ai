@@ -44,7 +44,7 @@ class FuelingInfoTool(
 
     override suspend fun execute(args: GetFuelInfoArgs): String {
         // R2 log point 4 (spec 3.2): emitted only when the LLM actually invokes the tool.
-        requestLogger.toolCall(Json.encodeToString(GetFuelInfoArgs.serializer(), args))
+        requestLogger.postgresRequest(Json.encodeToString(GetFuelInfoArgs.serializer(), args))
 
         val fueling = dataSource.fuelingById(args.fuelingId)
         // D8: user_id is the only verified link from a fueling to payments (order_id is not a

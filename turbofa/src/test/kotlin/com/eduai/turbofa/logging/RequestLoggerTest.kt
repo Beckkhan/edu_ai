@@ -35,7 +35,7 @@ class RequestLoggerTest {
         assertEquals("Request from Bruno to backend", Slf4jRequestLogger.LABEL_BRUNO_REQUEST)
         assertEquals("Request from backend to DeepSeek", Slf4jRequestLogger.LABEL_DEEPSEEK_REQUEST)
         assertEquals("Response from DeepSeek to backend", Slf4jRequestLogger.LABEL_DEEPSEEK_RESPONSE)
-        assertEquals("Request from backend to Postgres", Slf4jRequestLogger.LABEL_TOOL_CALL)
+        assertEquals("Request from backend to Postgres", Slf4jRequestLogger.LABEL_POSTGRES_REQUEST)
         assertEquals("Response from Postgres to backend", Slf4jRequestLogger.LABEL_POSTGRES_RESPONSE)
         assertEquals("Response from backend to Bruno", Slf4jRequestLogger.LABEL_BRUNO_RESPONSE)
     }
@@ -48,19 +48,17 @@ class RequestLoggerTest {
             """{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}""",
         )
 
-        assertEquals(1, event.lines().size, "the event is a single line (D10)")
         assertEquals(
             "$dateTime Request from Bruno to backend: " +
                 """{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}""",
             event,
-            "compact JSON on the same line — no pretty-print, no newlines",
+            "one line: date, label, compact JSON on the same line (D10)",
         )
         assertEquals(
             Json.parseToJsonElement("""{"prompt":"What happened with my fueling?","fueling_id":"99f068ca"}"""),
             Json.parseToJsonElement(event.substringAfter(": ")),
             "the body must parse back to the logged JSON",
         )
-        assertFalse("\n" in event, "no line breaks anywhere in the event")
     }
 
     @Test
@@ -83,7 +81,7 @@ class RequestLoggerTest {
             logger.brunoRequest(body)
             logger.deepSeekRequest(body)
             logger.deepSeekResponse(body)
-            logger.toolCall(body)
+            logger.postgresRequest(body)
             logger.postgresResponse(body)
             logger.brunoResponse(body)
         }
@@ -94,7 +92,7 @@ class RequestLoggerTest {
                 Slf4jRequestLogger.LABEL_BRUNO_REQUEST,
                 Slf4jRequestLogger.LABEL_DEEPSEEK_REQUEST,
                 Slf4jRequestLogger.LABEL_DEEPSEEK_RESPONSE,
-                Slf4jRequestLogger.LABEL_TOOL_CALL,
+                Slf4jRequestLogger.LABEL_POSTGRES_REQUEST,
                 Slf4jRequestLogger.LABEL_POSTGRES_RESPONSE,
                 Slf4jRequestLogger.LABEL_BRUNO_RESPONSE,
             ),
@@ -103,7 +101,7 @@ class RequestLoggerTest {
         )
         events.forEach { event ->
             // timestamp parse throws unless the event starts with yyyy-MM-dd HH:mm:ss.SSS
-            TIMESTAMP.parse(event.take(TIMESTAMP_LENGTH))
+            TIMESTAMP.parse(event.take(Slf4jRequestLogger.TIMESTAMP_PATTERN.length))
             assertTrue(event.lines().size == 1, "single-line event (D10)")
         }
     }
@@ -247,9 +245,7 @@ class RequestLoggerTest {
         /** Deliberately not the R2 logger name: no test event reaches the R2 appenders (D10). */
         const val CAPTURE_LOGGER = "turbofa.test.requestlog.capture"
 
-        private val TIMESTAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
-
-        /** "yyyy-MM-dd HH:mm:ss.SSS" is exactly 23 characters. */
-        private const val TIMESTAMP_LENGTH = 23
+        private val TIMESTAMP: DateTimeFormatter =
+            DateTimeFormatter.ofPattern(Slf4jRequestLogger.TIMESTAMP_PATTERN)
     }
 }

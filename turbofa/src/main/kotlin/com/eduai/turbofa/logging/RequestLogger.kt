@@ -1,9 +1,6 @@
 // src/main/kotlin/com/eduai/turbofa/logging/RequestLogger.kt
 package com.eduai.turbofa.logging
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
@@ -27,7 +24,7 @@ interface RequestLogger {
     fun deepSeekResponse(json: String)
 
     /** Called only when a tool is actually invoked for the request (R8). */
-    fun toolCall(json: String)
+    fun postgresRequest(json: String)
 
     /** The tool result coming back from Postgres (point 4b). */
     fun postgresResponse(json: String)
@@ -60,7 +57,7 @@ class Slf4jRequestLogger(
 
     override fun deepSeekResponse(json: String) = emit(LABEL_DEEPSEEK_RESPONSE, json)
 
-    override fun toolCall(json: String) = emit(LABEL_TOOL_CALL, json)
+    override fun postgresRequest(json: String) = emit(LABEL_POSTGRES_REQUEST, json)
 
     override fun postgresResponse(json: String) = emit(LABEL_POSTGRES_RESPONSE, json)
 
@@ -71,18 +68,13 @@ class Slf4jRequestLogger(
     }
 
     /**
-     * One R2 event: a single line "<date/time> <label>: <compact json body>" (D10). A body
-     * that is not valid JSON is written redacted and verbatim instead of being dropped —
-     * R8 forbids ellipses and truncated bodies.
+     * One R2 event: a single line "<date/time> <label>: <json body>" (D10). Every call
+     * site already hands compact JSON (kotlinx serialization), so the body is written
+     * redacted and verbatim — no parse/re-serialize round-trip, and a body that is not
+     * valid JSON is still written instead of dropped (R8 forbids ellipses and truncation).
      */
     internal fun formatEvent(dateTime: String, label: String, json: String): String =
-        "$dateTime $label: " + compact(redact(json))
-
-    private fun compact(json: String): String = try {
-        COMPACT_JSON.encodeToString(JsonElement.serializer(), COMPACT_JSON.parseToJsonElement(json))
-    } catch (_: IllegalArgumentException) {
-        json
-    }
+        "$dateTime $label: " + redact(json)
 
     /** Masks secret values and Authorization / api-key / password fields before anything is written. */
     internal fun redact(text: String): String {
@@ -97,11 +89,14 @@ class Slf4jRequestLogger(
         /** Logger wired to the R2 console and file appenders in logback.xml (D10). */
         const val LOGGER_NAME = "com.eduai.turbofa.requestlog"
 
+        /** D10: "yyyy-MM-dd HH:mm:ss.SSS", local — every event starts with its own date/time. */
+        const val TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS"
+
         // Labels exactly as R8 / spec 3.2 spell them (from/to direction, D10).
         const val LABEL_BRUNO_REQUEST = "Request from Bruno to backend"
         const val LABEL_DEEPSEEK_REQUEST = "Request from backend to DeepSeek"
         const val LABEL_DEEPSEEK_RESPONSE = "Response from DeepSeek to backend"
-        const val LABEL_TOOL_CALL = "Request from backend to Postgres"
+        const val LABEL_POSTGRES_REQUEST = "Request from backend to Postgres"
         const val LABEL_POSTGRES_RESPONSE = "Response from Postgres to backend"
         const val LABEL_BRUNO_RESPONSE = "Response from backend to Bruno"
 
@@ -110,13 +105,7 @@ class Slf4jRequestLogger(
 
         private const val MIN_SECRET_LENGTH = 4
 
-        /** D10: "yyyy-MM-dd HH:mm:ss.SSS", local — the event starts with its own date/time. */
-        private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
-
-        @OptIn(ExperimentalSerializationApi::class)
-        private val COMPACT_JSON = Json {
-            prettyPrint = false
-        }
+        private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern(TIMESTAMP_PATTERN)
 
         /** JSON fields whose value is a secret, e.g. {"Authorization": "Bearer ..."} or {"DB_PASSWORD": "..."}. */
         private val SECRET_FIELD = Regex(
@@ -149,3 +138,4 @@ class Slf4jRequestLogger(
         )
     }
 }
+

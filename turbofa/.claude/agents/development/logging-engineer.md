@@ -22,8 +22,8 @@ and logs/turbofa.log.
 
 ## Outputs
 - logging/RequestLogger.kt — RequestLogger implementation on SLF4J:
-  brunoRequest(json), deepSeekRequest(json), deepSeekResponse(json), toolCall(json),
-  postgresResponse(json), brunoResponse(json)
+  brunoRequest(json), deepSeekRequest(json), deepSeekResponse(json),
+  postgresRequest(json), postgresResponse(json), brunoResponse(json)
 
 ## Constraints
 - Line format exactly: "<date/time> <label>: <json body>" — a SINGLE LINE, compact JSON
@@ -33,7 +33,7 @@ and logs/turbofa.log.
   "Response from DeepSeek to backend", "Request from backend to Postgres",
   "Response from Postgres to backend", "Response from backend to Bruno"
 - json bodies — never an ellipsis or a truncated body (R8)
-- toolCall() is invoked only when a tool is actually used for the request (R8)
+- postgresRequest() is invoked only when a tool is actually used for the request (R8)
 - Secrets never logged: Authorization header, DEEPSEEK_API_KEY, DB_PASSWORD
 - SLF4J via logback-classic 1.6.3; logger name "com.eduai.turbofa.requestlog"; the six
   R2 lines at INFO level. D10: logback.xml attaches the R2 logger to BOTH sinks — an

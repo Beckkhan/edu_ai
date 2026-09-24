@@ -9,7 +9,8 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 ## Craft
 
 - 5a interface is exactly six methods (`brunoRequest`, `deepSeekRequest`,
-  `deepSeekResponse`, `toolCall`, `postgresResponse`, `brunoResponse`) — no extras (R10).
+  `deepSeekResponse`, `postgresRequest`, `postgresResponse`, `brunoResponse`) — no
+  extras (R10).
 - Line format: a SINGLE line `<date/time> <label>: <json body>`; date/time is
   `yyyy-MM-dd HH:mm:ss.SSS` (local, milliseconds); the body is compact JSON
   (prettyPrint = false). Never an ellipsis or a truncated body (R8).
@@ -17,8 +18,8 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
   `Request from backend to DeepSeek`, `Response from DeepSeek to backend`,
   `Request from backend to Postgres`, `Response from Postgres to backend`,
   `Response from backend to Bruno`.
-- `toolCall()` and `postgresResponse()` fire only when a tool is actually invoked for
-  the request (R8).
+- `postgresRequest()` and `postgresResponse()` fire only when a tool is actually
+  invoked for the request (R8).
 - Redact before writing: DEEPSEEK_API_KEY, DB_PASSWORD, and the Authorization header
   value. When in doubt about a field, drop it rather than log it.
 - Logger name `com.eduai.turbofa.requestlog`, the six lines at INFO. D10: logback.xml

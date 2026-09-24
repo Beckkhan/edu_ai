@@ -154,7 +154,7 @@ interface RequestLogger {
     fun brunoRequest(json: String)
     fun deepSeekRequest(json: String)
     fun deepSeekResponse(json: String)
-    fun toolCall(json: String)      // called only on an actual tool invocation
+    fun postgresRequest(json: String)  // called only on an actual tool invocation
     fun postgresResponse(json: String) // the aggregation result coming back from Postgres
     fun brunoResponse(json: String)
 }
