@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/client/deepseek/DeepSeekClient.kt
 package com.eduai.turbofa.client.deepseek
 
 import ai.koog.http.client.KoogHttpClient
@@ -29,13 +28,9 @@ private fun resolveModel(id: String): LLModel =
  * The Koog DeepSeek stack of spec 3.3: a [DeepSeekLLMClient] (R6 — DeepSeek is only ever reached
  * through Koog) wrapped in the [PromptExecutor] the agent runs on.
  *
- * The api key and the model id (AppConfig) are injected by the constructor — no environment access
- * here. The HTTP client factory is injectable as well so the R2 logging factory (T6) can be wired in
- * without touching this class; this class deliberately does not log requests or responses itself.
- *
- * @param apiKey DEEPSEEK_API_KEY from AppConfig; never logged
- * @param modelId DEEPSEEK_MODEL from AppConfig, e.g. "deepseek-chat"
- * @param httpClientFactory Koog HTTP client factory; defaults to a CIO client without SSE
+ * The api key and the model id come from the constructor (AppConfig) — no environment access here.
+ * The injectable HTTP client factory is the R2 logging seam (T6); this class deliberately does not
+ * log requests or responses itself.
  */
 class DeepSeekClient(
     apiKey: String,
@@ -43,7 +38,6 @@ class DeepSeekClient(
     httpClientFactory: KoogHttpClient.Factory = defaultHttpClientFactory(),
 ) {
 
-    /** Koog DeepSeek client (R6); lives for the whole process, see [close]. */
     private val llmClient = DeepSeekLLMClient(
         apiKey = apiKey,
         settings = DeepSeekClientSettings(
@@ -56,23 +50,19 @@ class DeepSeekClient(
         httpClientFactory = httpClientFactory,
     )
 
-    /** Executor the agent runs on (spec 3.3). */
     val executor: PromptExecutor = MultiLLMPromptExecutor(llmClient)
 
-    /** Model resolved from [modelId]; the agent is built with it. */
     val model: LLModel = resolveModel(modelId)
 
-    /** Releases the resources held by the Koog client. */
     fun close() = executor.close()
 
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 15_000L
 
-        /** Tool runs query three databases; DeepSeek summaries can take a while. */
+        /** The tool queries three databases, and DeepSeek summaries of the result take a while. */
         const val REQUEST_TIMEOUT_MILLIS = 120_000L
     }
 }
 
-/** Default transport: CIO without SSE — DeepSeek is called with regular (non-streaming) requests. */
 private fun defaultHttpClientFactory(): KtorKoogHttpClient.Factory =
     KtorKoogHttpClient.Factory(baseClient = HttpClient(CIO), withSse = false)

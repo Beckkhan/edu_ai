@@ -47,7 +47,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 | Contract | Counterpart | What crosses the boundary |
 |----------|-------------|---------------------------|
 | Descriptor format 5b + `fueling_id` string rule | koog-engineer | implemented verbatim in T1 |
-| skill.md per agent (craft, ownership, contracts) | all agents, reviewer | read at spawn and during review |
+| skill.md per agent (craft, ownership, contracts) | all agents, reviewers | read at spawn and during review |
 | Rationale table + folder map | CTO, task-planner | entity roster and spawn names |
 | Spec §3.3/§4/§5 | spec-writer, architect | content source for skills and ownership |
 

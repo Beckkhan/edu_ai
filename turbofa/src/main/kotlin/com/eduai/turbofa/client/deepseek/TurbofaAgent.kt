@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/client/deepseek/TurbofaAgent.kt
 package com.eduai.turbofa.client.deepseek
 
 import ai.koog.agents.core.agent.AIAgent
@@ -21,24 +20,22 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
-/** The tool handler this agent owns; the descriptor of resources/tools/get_fueling_info.json must match (5b). */
+/** Must match the tool name in resources/tools/get_fueling_info.json (5b). */
 private const val FUELING_INFO_TOOL = "get_fueling_info"
 
-/** Roles of the 5d contract — the strings ChatService uses on [ChatMessage]. */
+/** 5d contract: the role strings ChatService writes on [ChatMessage]. */
 private const val ROLE_SYSTEM = "system"
 private const val ROLE_USER = "user"
 private const val ROLE_ASSISTANT = "assistant"
 
-/** Where the tool descriptors live on the classpath (5c). */
 private const val TOOLS_RESOURCE = "/tools/"
 
 private const val JSON_SUFFIX = ".json"
 
 /**
- * The reply-style instruction. DeepSeek otherwise answers with heavy markdown (### headers,
- * | tables, - lists, ** bold) that reads as visual clutter; the stakeholder wants plain
- * readable text: 3-5 sentences with the key facts of the fueling, nothing but the tool
- * result's data — no analysis, no recommendations.
+ * The stakeholder wants plain readable text; DeepSeek otherwise answers with heavy markdown
+ * (### headers, | tables, - lists, ** bold) that reads as visual clutter. 3-5 sentences with the
+ * key facts of the fueling, nothing but the tool result's data — no analysis, no recommendations.
  */
 private const val SYSTEM_PROMPT =
     "You are a fueling-data assistant. Respond in the same language as the user's request. " +
@@ -55,7 +52,6 @@ private const val SYSTEM_PROMPT =
  * the fueling_id when the request carried one (5d, the single embedding point).
  */
 interface TurbofaAgent {
-    /** Returns the final assistant text; tool calls execute inside the agent. */
     suspend fun chat(messages: List<ChatMessage>): String
 }
 
@@ -71,11 +67,6 @@ interface TurbofaAgent {
  * Stateless (D2): every [chat] call builds ONE fresh agent whose initial Prompt is the
  * response-style system instruction followed by the received dialogue; no Koog session state
  * survives a call — ChatHistoryStore is the single source of truth.
- *
- * @param executor Koog executor of [DeepSeekClient] (R6)
- * @param model model resolved from DEEPSEEK_MODEL
- * @param dataSource read-only queries the tool handler runs (5f)
- * @param requestLogger R2 log point 4 is emitted by the tool handler on an actual tool call (spec 3.2)
  */
 class KoogTurbofaAgent(
     private val executor: PromptExecutor,
@@ -84,7 +75,7 @@ class KoogTurbofaAgent(
     requestLogger: RequestLogger,
 ) : TurbofaAgent {
 
-    /** 5c: built once at startup so a missing/broken descriptor fails the process, not a request. */
+    /** 5c: built once at startup, so a missing/broken descriptor fails the process, not a request. */
     private val toolRegistry: ToolRegistry = ToolRegistry {
         loadToolDescriptors().forEach { descriptor ->
             require(descriptor.name == FUELING_INFO_TOOL) {
@@ -106,7 +97,6 @@ class KoogTurbofaAgent(
         return buildAgent(historyPrompt(messages.dropLast(1))).run(promptMessage.content)
     }
 
-    /** One Prompt: the plain-text response instruction, then the received roles (5d, D2). */
     private fun historyPrompt(history: List<ChatMessage>): Prompt = prompt("chat") {
         system(SYSTEM_PROMPT)
         history.forEach { message ->
@@ -119,7 +109,6 @@ class KoogTurbofaAgent(
         }
     }
 
-    /** A fresh agent per call (D2): no run state is kept between requests. */
     private fun buildAgent(history: Prompt): AIAgent<String, String> =
         AIAgent.builder()
             .promptExecutor(executor)
@@ -129,7 +118,7 @@ class KoogTurbofaAgent(
             .graphStrategy(singleRunStrategy())
             .build()
 
-    /** The `*.json` descriptors of `resources/tools` (5c); fails fast when the set would be empty (R7). */
+    /** The `*.json` descriptors of `resources/tools` (5c); an empty set fails fast (R7). */
     private fun loadToolDescriptors(): List<ToolDescriptor> {
         val directory = File(
             checkNotNull(javaClass.getResource(TOOLS_RESOURCE)) {
@@ -144,10 +133,6 @@ class KoogTurbofaAgent(
     }
 }
 
-/**
- * One JSON descriptor (the T1 format, 5b) → Koog [ToolDescriptor]: the top-level `properties` become
- * the parameter descriptors, `required` splits them into required and optional parameters.
- */
 private fun parseDescriptor(file: File): ToolDescriptor {
     val json = Json.parseToJsonElement(file.readText()).jsonObject
     val parameters = json["parameters"] as? JsonObject
@@ -161,7 +146,6 @@ private fun parseDescriptor(file: File): ToolDescriptor {
     )
 }
 
-/** The JSON-schema `properties` of an object schema (top-level or nested) → Koog parameters. */
 private fun parameterDescriptors(schema: JsonObject?): List<ToolParameterDescriptor> =
     (schema?.get("properties") as? JsonObject).orEmpty().map { (name, property) ->
         val parameter = property as? JsonObject
@@ -173,10 +157,9 @@ private fun parameterDescriptors(schema: JsonObject?): List<ToolParameterDescrip
     }
 
 /**
- * JSON-schema `type` → Koog's parameter model, the translation this loader owns for the descriptors
- * of `resources/tools`: primitives, arrays of them and nested objects. A missing or unsupported type
- * falls back to [ToolParameterType.String] — the type Koog's OpenAI/DeepSeek schema generator
- * reports for plain text parameters, which is what the current descriptor uses (5b).
+ * JSON-schema `type` → Koog's parameter model for the descriptors of `resources/tools`. A missing
+ * or unsupported type falls back to [ToolParameterType.String], the type Koog's DeepSeek schema
+ * generator reports for plain text parameters, which is what the current descriptor uses (5b).
  */
 private fun parameterType(schema: JsonObject?): ToolParameterType = when (schema.stringField("type")) {
     "boolean" -> ToolParameterType.Boolean
@@ -190,10 +173,8 @@ private fun parameterType(schema: JsonObject?): ToolParameterType = when (schema
     else -> ToolParameterType.String
 }
 
-/** The JSON-schema `required` names of an object schema. */
 private fun requiredNames(schema: JsonObject?): List<String> =
     (schema?.get("required") as? JsonArray).orEmpty()
         .mapNotNull { (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content }
 
-/** The String value of a JSON-schema field, or null when it is absent. */
 private fun JsonObject?.stringField(field: String): String? = (this?.get(field) as? JsonPrimitive)?.content

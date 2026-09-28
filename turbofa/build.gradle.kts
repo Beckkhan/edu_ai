@@ -3,6 +3,8 @@ plugins {
     kotlin("jvm") version "2.4.20"
     kotlin("plugin.serialization") version "2.4.20"
     application
+    id("org.jlleitschuh.gradle.ktlint") version "12.2.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
 }
 
 group = "com.eduai"
@@ -29,6 +31,7 @@ dependencies {
     // External DB access: plain JDBC + HikariCP, read-only
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("com.zaxxer:HikariCP:6.2.1")
+    implementation("org.kodein.di:kodein-di-jvm:7.20.2")
     implementation("org.postgresql:postgresql:42.7.7")
     implementation("ch.qos.logback:logback-classic:1.6.3")
 
@@ -42,3 +45,32 @@ kotlin { jvmToolchain(23) }
 application { mainClass.set("com.eduai.turbofa.ApplicationKt") }
 
 tasks.test { useJUnitPlatform() }
+
+// Style gates (T19): ktlint reads .editorconfig; detekt builds on its default config
+// baseline: pre-T19 findings recorded, so new diffs fail on NEW issues only
+detekt {
+    buildUponDefaultConfig = true
+    baseline = file("detekt-baseline.xml")
+}
+
+// detekt 1.23.x supports jvm-target up to 22; the project toolchain is 23
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "22"
+}
+tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
+    jvmTarget = "22"
+}
+
+// T19: pre-existing application code violates ktlint and must stay untouched, so the
+// gate runs explicitly (code-style-reviewer) instead of failing every ./gradlew build;
+// remove this exclusion when the follow-up task makes the tree ktlint-clean
+tasks.named("check") {
+    setDependsOn(dependsOn.filterNot {
+        val name = when (it) {
+            is Task -> it.name
+            is TaskProvider<*> -> it.name
+            else -> it.toString()
+        }
+        name.startsWith("ktlint")
+    })
+}

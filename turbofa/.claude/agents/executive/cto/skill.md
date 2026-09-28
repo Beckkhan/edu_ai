@@ -17,9 +17,9 @@ cross-agent contracts exchanged on the project (source: docs/project-specificati
 - Status discipline (R12): statuses and the `verified:` field in docs/tasks.md are
   CTO-only and advance immediately on an outcome — `pending → in progress → done`, or
   `blocked` with a reason. `verified: ok` only after an approved review.
-- Done-and-unchanged tasks get a reviewer verification pass only — never re-spawn the
-  owner (R12).
-- On reviewer findings: hand the task back to the owning agent with the findings list;
+- Done-and-unchanged tasks get a correctness-reviewer verification pass only — never
+  re-spawn the owner (R12).
+- On review findings: hand the task back to the owning agent with the findings list;
   never fix code or spec inline.
 - Escalate spec gaps to the Specification team (spec-writer / task-planner) and flag the
   downstream tasks they invalidate. EXECUTION ONLY forbids editing requirements,
@@ -37,7 +37,7 @@ cross-agent contracts exchanged on the project (source: docs/project-specificati
 | Contract | Counterpart | What crosses the boundary |
 |----------|-------------|---------------------------|
 | Task line (owner, artifact, acceptance, deps) | task-planner | consumed to dispatch; owner value must be a spawnable subagent name |
-| Review verdict (approve / findings list) | reviewer | on approve, status → `done` + `verified`; on findings, handed back to the owner |
+| Review verdicts (approve / findings list) | correctness-reviewer, simplicity-reviewer, git-reviewer, code-style-reviewer | on all approves, status → `done` + `verified`; on findings, handed back to the owner |
 | Escalation | spec-writer / task-planner | spec gaps reported, never patched inline |
 | Contract context in the spawn prompt | all development agents | the 5a–5f contracts the task depends on |
 
@@ -45,7 +45,7 @@ cross-agent contracts exchanged on the project (source: docs/project-specificati
 
 - At the end of a run, every task in docs/tasks.md is `done` or `blocked` with a
   recorded reason; no task is silently skipped.
-- Statuses match the repository state; nothing was marked done without a reviewer
-  approve.
+- Statuses match the repository state; nothing was marked done without all review
+  gates approving.
 - No CTO-authored diff touches docs/requirements.md, docs/project-specification.md, or
   application code.

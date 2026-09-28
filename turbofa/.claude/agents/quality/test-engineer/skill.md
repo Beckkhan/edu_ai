@@ -44,7 +44,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 | 5a `RequestLogger` | logging-engineer | format and redaction assertions |
 | 5e history semantics | kotlin-engineer | restart-clear and consistency assertions |
 | Acceptance criteria | task-planner / CTO | the definition of "covered" per task |
-| Test results | reviewer | evidence the referenced tests exist and pass |
+| Test results | correctness-reviewer | evidence the referenced tests exist and pass |
 
 ## Verification hooks
 

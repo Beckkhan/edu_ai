@@ -7,7 +7,7 @@ import java.time.Instant
 
 private const val ROLE_USER = "user"
 
-/** Tool name as declared in resources/tools/get_fueling_info.json (5b, T1). */
+/** Must match the tool name in resources/tools/get_fueling_info.json (5b). */
 private const val FUELING_INFO_TOOL = "get_fueling_info"
 
 /**
@@ -21,15 +21,8 @@ class ChatService(
     private val agent: TurbofaAgent,
     private val history: ChatHistoryStore,
 ) {
-    /**
-     * Appends [prompt] to the history, runs the agent over the whole dialogue and returns the
-     * assistant text.
-     *
-     * With [fuelingId] the outgoing user message embeds it (R9) so DeepSeek can call
-     * `get_fueling_info`; without it the message list stays a plain dialogue (no tool call).
-     */
     suspend fun chat(prompt: String, fuelingId: String? = null): String {
-        val dialogue = history.records() // everything said before this request
+        val dialogue = history.records()
         history.appendUser(prompt)
 
         // R9: only the outgoing message carries the fueling_id — the history keeps the raw prompt,

@@ -328,6 +328,15 @@ and `fueling_events.fueling_id` = `fuelings.fueling_id` (1:1 and ~4 rows per fue
 Unverified/no link: `payments.order_id` (0/10), `payments` ↔ fueling (user_id is the
 only working link), `fuelings.vendor_fueling_order_id` ↔ vendor tables (0 matches).
 
+### 6.1 Schema DDL (docs/schema.sql)
+
+The discovered structure is captured DDL-first in `docs/schema.sql` (D11): CREATE
+TABLE statements for fuelings, payments, fueling_orders, fueling_events and
+vendor_fueling_orders with column types and nullability from information_schema —
+structure only, no data, no DML, no credentials. The AI consumes this DDL to
+understand data structures; it never receives credentials or SQL (D11). The file is
+maintained by the architect on schema re-discovery.
+
 ## 7. Decisions
 
 **D1 — Koog agent layer: AIAgent + singleRunStrategy.**
@@ -399,6 +408,17 @@ row there — the table covers a subset (possibly one vendor). The query is corr
 the result may be empty.
 Alternatives: drop the table (rejected — loses data when present); join via
 fuelings.vendor_fueling_order_id (rejected — verified 0 matches).
+
+**D11 — DDL-first: the AI receives DDL scripts (docs/schema.sql), never DB
+credentials.**
+Decision: the AI receives DDL scripts (docs/schema.sql) to understand data
+structures. Tool handlers on the backend use credentials from .env to execute SQL
+queries. The AI generates only tool arguments (JSON), never SQL and never DDL.
+Why: security — DB credentials never leave the backend; the AI understands data
+structures for query generation but has no direct DB access.
+Alternatives considered: (a) passing credentials in the system prompt (rejected —
+security risk); (b) text-to-SQL with direct DB access (rejected — violates the
+read-only constraint R5).
 
 ## 8. Escalations and execution feedback (recorded, not silently "fixed")
 

@@ -31,7 +31,7 @@ never alter the specification itself.
   Any discovered gap is recorded and escalated, never silently corrected
 - Every task must go to exactly the owner listed in docs/tasks.md — no re-assignment
 - Blocked tasks never start before their dependencies are done
-- Done-and-unchanged tasks undergo verification only (reviewer), never re-execution
+- Done-and-unchanged tasks undergo verification only (correctness-reviewer), never re-execution
 - Only the CTO updates statuses in docs/tasks.md, immediately after a task finishes or fails
 - No application code changes outside the tasks listed in docs/tasks.md
 
@@ -44,10 +44,15 @@ never alter the specification itself.
    `koog-engineer`), with a prompt containing the task line, its acceptance criteria,
    and the contracts it depends on. The agent's own definition
    (.claude/agents/<team>/<agent>.md) is loaded as its instructions automatically
-4. Spawn reviewer on the task's diff; on approve, mark the task `done` with a note and
-   set `verified`; on findings, hand the task back to the owner agent with the findings
-5. If a task changes a downstream contract, flag affected tasks for Specification team re-planning
-6. Repeat until no runnable tasks remain; report the final backlog state
+4. Spawn the reviewers sequentially on the diff: correctness-reviewer; on approve,
+   simplicity-reviewer; on approve, git-reviewer. If all approve, proceed; on findings
+   from any reviewer, hand the task back to the owner agent with the findings
+5. Spawn code-style-reviewer on every diff: style findings are non-blocking for
+   correctness but block the final done status
+6. If all reviewers approve, mark the task `done` with a note and set `verified`
+7. When verifying a task, run build/test with --quiet and read only the verdict (R11)
+8. If a task changes a downstream contract, flag affected tasks for Specification team re-planning
+9. Repeat until no runnable tasks remain; report the final backlog state
 
 ## Definition of Done
 - Every task in docs/tasks.md is either `done` or `blocked` with a recorded reason

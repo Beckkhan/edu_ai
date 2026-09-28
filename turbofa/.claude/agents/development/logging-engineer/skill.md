@@ -50,7 +50,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 | Contract | Counterpart | What crosses the boundary |
 |----------|-------------|---------------------------|
 | 5a interface (six methods) | api-client-engineer (points 1/5), koog-engineer (points 2/3/4/4b) | consumed; one single-line event per call |
-| Exact label set + json body rule | reviewer, test-engineer | verifiable format contract |
+| Exact label set + json body rule | correctness-reviewer, test-engineer | verifiable format contract |
 | Secret list | api-client-engineer (AppConfig env set) | which values must never reach a line |
 | R8 six-point guarantee | the union of the consumers' call sites | not enforceable from this module alone |
 

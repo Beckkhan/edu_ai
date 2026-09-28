@@ -25,11 +25,13 @@ Any gap you find is escalated to the Specification team — never fixed inline.
      e.g. `development/koog-engineer` → subagent type `koog-engineer`)
    - prompt = the task line, its acceptance criteria, and the contracts it depends on
    - the agent's own definition (`.claude/agents/<team>/<agent>.md`) loads automatically as its instructions
-4. **Done-and-unchanged tasks undergo verification only**: spawn the `reviewer`
-   subagent on the existing diff, never the owner agent again (R12).
-5. After a task finishes, spawn the `reviewer` subagent on the task's diff. On approve,
-   update its status in `docs/tasks.md` (`done`, `verified: ok`); on findings, hand the
-   task back to the owner agent with the findings list.
+4. **Done-and-unchanged tasks undergo verification only**: spawn the
+   `correctness-reviewer` subagent on the existing diff, never the owner agent again (R12).
+5. After a task finishes, spawn the reviewers sequentially on the task's diff:
+   `correctness-reviewer`; on approve, `simplicity-reviewer`; on approve, `git-reviewer`;
+   then `code-style-reviewer` (style findings block the done status but not correctness).
+   On all approves, update its status in `docs/tasks.md` (`done`, `verified: ok`); on
+   findings from any reviewer, hand the task back to the owner agent with the findings list.
 6. Only you update statuses in `docs/tasks.md` (R12).
 7. Repeat until no runnable tasks remain; then report the final backlog state.
 

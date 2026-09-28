@@ -43,7 +43,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 | Spec contracts + §3.3 module map | spec-writer | decomposed into tasks with `artifact:` paths |
 | Agent roster (`name:` frontmatter values) | skill-designer / CTO | `owner:` values must be spawnable subagent types |
 | Runnable task lines | CTO | dispatch unit with acceptance and deps |
-| Acceptance criteria | task owners, reviewer | mechanically verifiable baseline |
+| Acceptance criteria | task owners, reviewers | mechanically verifiable baseline |
 | Escalation-driven re-plan | spec-writer | contract changes reopen affected tasks |
 
 ## Verification hooks

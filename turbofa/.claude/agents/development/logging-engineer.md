@@ -42,6 +42,19 @@ and logs/turbofa.log.
   root logger keeps the CONSOLE appender with the full pattern. No append attribute —
   logback 1.6.3 forces append=true on RollingFileAppender, so freshness is app-side
   (E4: Application.kt truncates the file at startup before the first SLF4J logger)
+- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
+  non-trivial business logic that cannot be expressed via function names, external
+  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
+  Decision log references (D1, D4, ...) on the code that implements those decisions
+- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
+  SharedDI with fun init()); comments before self-evident modules/functions
+  ("Env configuration", "Read-only pools"); comments restating the name of the
+  function/variable/module ("Env configuration (D7)" above configModule); comments
+  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
+  obvious Kotlin syntax; comments like "// add user to DB" before a function named
+  addUserToDb()
+- Variable/function names must be self-documenting; if a function needs a comment to
+  be understood — rename or decompose it
 
 ## Workflow
 1. Define the RequestLogger interface with the six methods from R8

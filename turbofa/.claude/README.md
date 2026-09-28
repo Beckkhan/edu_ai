@@ -36,7 +36,10 @@ spawns the agent name after the slash.
 │   │   └── data-engineer.md               # read-only JDBC over the external Postgres
 │   └── quality/
 │       ├── test-engineer.md               # unit tests + verification-only passes
-│       └── reviewer.md                    # read-only diff review gate
+│       ├── correctness-reviewer.md        # logic/contracts/tests gate (read-only)
+│       ├── simplicity-reviewer.md         # duplication/simplicity gate (R10, read-only)
+│       ├── git-reviewer.md                # commit hygiene gate (read-only)
+│       └── code-style-reviewer.md         # style gate: .code-style.md + ktlint/detekt
 └── commands/
     └── process.md             # slash command → runs the cto workflow
 
@@ -50,7 +53,7 @@ logs/turbofa.log               # R2 event log (single FILE appender, truncated o
 ```
 
 Each agent directory also carries its `skill.md` at
-`.claude/agents/<team>/<agent>/skill.md` (12 files, R2): craft notes, file ownership,
+`.claude/agents/<team>/<agent>/skill.md` (15 files, R2): craft notes, file ownership,
 and the cross-agent contracts it exchanges. skill.md files are plain markdown without
 YAML frontmatter — only files with a `name:` frontmatter value are subagent definitions,
 so a skill.md is never itself a subagent.
@@ -62,7 +65,7 @@ so a skill.md is never itself a subagent.
 | Executive | cto | Spawns the owning agent per task, tracks statuses, escalates. Never changes the spec. |
 | Specification | architect, spec-writer, task-planner, skill-designer | Turns `docs/requirements.md` into `docs/project-specification.md` and `docs/tasks.md`; discovers the external DB schema; owns agent definitions. |
 | Development | kotlin-engineer, koog-engineer, logging-engineer, api-client-engineer, data-engineer | Implements tasks exactly as specified; each engineer owns a disjoint set of files. |
-| Quality | test-engineer, reviewer | Proves behavior with tests and reviews diffs; a task is not done until approved and green. |
+| Quality | test-engineer, correctness-reviewer, simplicity-reviewer, git-reviewer, code-style-reviewer | Proves behavior with tests; reviews diffs for correctness, simplicity, git hygiene and style; a task is not done until all gates approve. |
 
 ## Rationale: SKILL vs AGENT
 
@@ -79,10 +82,13 @@ so a skill.md is never itself a subagent.
 | api-client-engineer | AGENT | Owns the Bruno-facing API contract and configuration (R9). |
 | data-engineer | AGENT | Owns the read-only JDBC layer over the external DB; the "no DDL/DML" invariant lives here (R5, R7). |
 | test-engineer | AGENT | Test files and verification-only passes are standing ownership (R12). |
-| reviewer | AGENT | Quality gate with a verdict contract (approve / findings list) applied to every task. |
+| correctness-reviewer | AGENT | Quality gate for logic, contracts and tests (approve / findings list) applied to every diff; also the R12 verification-only gate. |
+| simplicity-reviewer | AGENT | Quality gate for duplication and abstraction (R10) — a standing verdict applied to every diff. |
+| git-reviewer | AGENT | Quality gate for commit atomicity, messages and hygiene — a standing verdict applied to every commit set. |
+| code-style-reviewer | AGENT | Owns the style standard (.code-style.md) and its mechanical enforcement (ktlint/detekt) — a standing gate applied to every diff. |
 | /process | SKILL | Stateless glue: reads the spec and backlog, runs the cto workflow, then exits. No state of its own. |
 
-Each AGENT has a skill.md at `.claude/agents/<team>/<agent>/skill.md` (12 files, R2)
+Each AGENT has a skill.md at `.claude/agents/<team>/<agent>/skill.md` (15 files, R2)
 capturing its craft: conventions, file ownership, and the cross-agent contracts (5a–5f)
 it exchanges — maintained by skill-designer. Agents need persistent scope, tool sets, and
 isolated context; a skill cannot hold ownership or authority, which is why every entity
@@ -97,10 +103,11 @@ with standing deliverables is an agent, and only the stateless entry points are 
    (ordered backlog with owners, artifacts, dependencies).
 3. `/process` runs the cto in EXECUTION ONLY mode: the cto reads the spec and backlog,
    spawns the owning agent (subagent type = the agent name after the slash in
-   `owner: <team>/<agent>`) per runnable task, then spawns reviewer on each diff,
-   and updates task statuses in `docs/tasks.md`.
+   `owner: <team>/<agent>`) per runnable task, then spawns the reviewers sequentially
+   on each diff (correctness-reviewer → simplicity-reviewer → git-reviewer) followed by
+   code-style-reviewer (style gate), and updates task statuses in `docs/tasks.md`.
 4. Development team implements; Quality team tests and reviews; a task reaches
-   `done` only after an approved review. Done-and-unchanged tasks get a reviewer
-   verification pass only (R12).
+   `done` only after all review gates approve. Done-and-unchanged tasks get a
+   correctness-reviewer verification pass only (R12).
 5. Spec gaps found during execution are escalated to the Specification team and
    re-planned — the cto never patches the spec inline.

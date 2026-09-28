@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/routes/ChatRoutes.kt
 package com.eduai.turbofa.routes
 
 import com.eduai.turbofa.logging.RequestLogger
@@ -16,12 +15,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * R9 request of the Bruno contract: a prompt plus an OPTIONAL fueling_id.
- *
- * fueling_id is the UUID string of the external schema (D6) — R9's `<int>` is stale (E1). It is
- * null when Bruno omits the field; a non-string value fails deserialization and is rejected, and a
- * present string must additionally be the UUID textual form (checked in [chatRoutes]), so the tool
- * chain can never see anything but a string id.
+ * R9 request of the Bruno contract: a prompt plus an OPTIONAL fueling_id — the UUID string of the
+ * external schema (D6; R9's `<int>` is stale, E1). It is null when Bruno omits the field; a
+ * non-string value fails deserialization, and a present string must additionally be the UUID
+ * textual form (checked in [chatRoutes]), so the tool chain can never see anything but a string id.
  */
 @Serializable
 data class LocalChatRequest(
@@ -29,19 +26,17 @@ data class LocalChatRequest(
     @SerialName("fueling_id") val fuelingId: String? = null,
 )
 
-/** R9 response: the assistant text — whether a tool ran is the agent's business, not Bruno's. */
 @Serializable
 data class LocalChatResponse(val response: String)
 
-/** Body of a rejected request, so Bruno receives JSON on 400 as well. */
+/** Rejection body, so Bruno receives JSON on 400 as well. */
 @Serializable
 data class LocalChatErrorResponse(val error: String)
 
 /**
  * The JSON policy of the Bruno API (R9): fields outside the DTO are ignored, and a null default
- * (an absent fueling_id) stays omitted, so logged bodies match the 5a example.
- *
- * Application.kt installs it once: `install(ContentNegotiation) { json(ChatJson) }`.
+ * (an absent fueling_id) stays omitted, so logged bodies match the 5a example. Application.kt
+ * installs it once while the same instance encodes the route's responses.
  */
 val ChatJson: Json = Json { ignoreUnknownKeys = true }
 
@@ -50,12 +45,10 @@ val ChatJson: Json = Json { ignoreUnknownKeys = true }
  *
  * Thin by contract (R10): receive the DTO, emit log point 1, delegate to [ChatService] (which owns
  * history and the single fueling_id embedding), emit log point 5, respond. No DeepSeek, Koog, tool
- * or JDBC type is imported here — [ChatService] is the route's only dependency.
- *
- * A body that is not the R9 DTO (unparseable JSON, missing or blank prompt, a fueling_id that is not
- * the UUID form of D6) is rejected with 400 and a [LocalChatErrorResponse]; R8 log point 5 records
- * the body Bruno receives back on rejection too. Content negotiation with [ChatJson] must be
- * installed by the caller.
+ * or JDBC type is imported here. A body outside the R9 DTO (unparseable JSON, missing or blank
+ * prompt, a fueling_id that is not the UUID form of D6) is rejected with 400 and a
+ * [LocalChatErrorResponse], log point 5 recording that body too. Content negotiation with [ChatJson]
+ * must be installed by the caller.
  */
 fun Route.chatRoutes(chatService: ChatService, requestLogger: RequestLogger) {
     post("/chat") {
@@ -104,14 +97,12 @@ private suspend fun ApplicationCall.receiveChatRequest(): LocalChatRequest? = tr
     null
 }
 
-/** Rejects a request that never reaches [ChatService]: log point 5, then a 400 with a JSON body. */
 private suspend fun ApplicationCall.reject(requestLogger: RequestLogger, message: String) {
     val body = LocalChatErrorResponse(message)
     requestLogger.brunoResponse(ChatJson.encodeToString(LocalChatErrorResponse.serializer(), body))
     respond(HttpStatusCode.BadRequest, body)
 }
 
-/** Textual UUID form of the external fueling_id (D6), 8-4-4-4-12; hex case does not matter. */
 private val UUID_FORMAT = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 private const val INVALID_REQUEST =

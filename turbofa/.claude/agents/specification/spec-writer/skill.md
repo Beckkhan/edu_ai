@@ -41,7 +41,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 | Architect's design + schema discovery | architect | consumed into spec §2/§3/§6 |
 | 5a–5f (shapes, owners, invariants) | all development agents | task acceptance criteria cite them |
 | R/D/5x IDs | task-planner | coverage table and `deps:` references |
-| Verification baseline | reviewer | every acceptance criterion traces to a spec contract |
+| Verification baseline | correctness-reviewer | every acceptance criterion traces to a spec contract |
 | E1–E3 | stakeholder (via CTO) | recorded escalations, not silent fixes |
 
 ## Verification hooks

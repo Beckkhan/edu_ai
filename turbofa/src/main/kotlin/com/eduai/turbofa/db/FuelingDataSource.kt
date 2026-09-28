@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/db/FuelingDataSource.kt
 package com.eduai.turbofa.db
 
 import org.postgresql.util.PGobject
@@ -15,10 +14,6 @@ import javax.sql.DataSource
  * maps and go to the tool as-is (no domain classes, R10): the heterogeneous epoch timestamps
  * (numeric / bigint / text) stay opaque, and only jsonb columns are unwrapped to their text,
  * because a [PGobject] cannot be serialized.
- *
- * @param fuelingDatabase pool for the `fueling` database (query 1)
- * @param paymentDatabase pool for the `payment` database (query 2)
- * @param vendorsDatabase pool for the `vendors` database (queries 3-5)
  */
 class FuelingDataSource(
     private val fuelingDatabase: DataSource,
@@ -42,7 +37,7 @@ class FuelingDataSource(
     fun paymentsByUserId(userId: String, limit: Int = PAYMENT_LIMIT): List<Map<String, Any?>> =
         query(paymentDatabase, SQL_PAYMENTS_BY_USER, userId, limit)
 
-    /** 3) The vendor-side order of the fueling (verified 1:1), or null. */
+    /** 3) The vendor-side order of the fueling (verified 1:1). */
     fun fuelingOrdersById(id: String): Map<String, Any?>? =
         query(vendorsDatabase, SQL_FUELING_ORDER_BY_ID, id).firstOrNull()
 
@@ -57,10 +52,6 @@ class FuelingDataSource(
     fun vendorFuelingOrdersById(id: String): Map<String, Any?>? =
         query(vendorsDatabase, SQL_VENDOR_ORDER_BY_ID, id).firstOrNull()
 
-    /**
-     * Runs one SELECT through a prepared statement ([id] plus an optional row [limit]); the result
-     * set, the statement and the connection are closed in the finally block.
-     */
     private fun query(
         dataSource: DataSource,
         sql: String,
@@ -90,7 +81,6 @@ class FuelingDataSource(
         }
     }
 
-    /** One row as an ordered column map; the values keep their JDBC form, jsonb becomes text. */
     private fun columnMap(resultSet: ResultSet): Map<String, Any?> {
         val metadata = resultSet.metaData
         val row = LinkedHashMap<String, Any?>(metadata.columnCount)
@@ -106,10 +96,7 @@ class FuelingDataSource(
     }
 
     companion object {
-        /** Default LIMIT of the user's payments (D8, R11). */
         const val PAYMENT_LIMIT = 10
-
-        /** Default LIMIT of the vendor events (5f, R11). */
         const val EVENT_LIMIT = 20
 
         // The five statements of spec 5f, in order; SELECT only (R5).

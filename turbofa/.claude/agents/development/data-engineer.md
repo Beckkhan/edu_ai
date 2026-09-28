@@ -41,6 +41,22 @@ external databases.
 - HikariCP: one pool per database, maximumPoolSize = 5 each (D7)
 - Close statements/connections in finally blocks
 - Bash/psql usage is for read-only discovery and verification only
+- DB credentials are read from .env via AppConfig. Never log them or pass them to
+  LLM context (D11)
+- All SQL queries are read-only (SELECT). No DDL/DML (R5)
+- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
+  non-trivial business logic that cannot be expressed via function names, external
+  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
+  Decision log references (D1, D4, ...) on the code that implements those decisions
+- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
+  SharedDI with fun init()); comments before self-evident modules/functions
+  ("Env configuration", "Read-only pools"); comments restating the name of the
+  function/variable/module ("Env configuration (D7)" above configModule); comments
+  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
+  obvious Kotlin syntax; comments like "// add user to DB" before a function named
+  addUserToDb()
+- Variable/function names must be self-documenting; if a function needs a comment to
+  be understood — rename or decompose it
 
 ## Workflow
 1. Confirm the discovered schema against information_schema (read-only psql)

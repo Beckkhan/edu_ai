@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/client/deepseek/DeepSeekLoggingHttpClientFactory.kt
 package com.eduai.turbofa.client.deepseek
 
 import ai.koog.http.client.KoogHttpClient
@@ -14,12 +13,8 @@ import io.ktor.utils.io.toByteArray
 import kotlinx.serialization.json.Json
 
 /**
- * DeepSeek-side R2 logging (spec 3.2, R8): the factory seam [DeepSeekClient] exposes
- * (`httpClientFactory`), so every request the Koog client sends and every response it receives
- * carries the two log points of the DeepSeek channel.
- *
- * It wraps another [KoogHttpClient.Factory] (the caller's `KtorKoogHttpClient.Factory`, i.e. the
- * regular CIO transport) and decorates the Ktor client that factory creates:
+ * DeepSeek-side R2 logging (spec 3.2, R8): the factory seam [DeepSeekClient] exposes, decorating the
+ * Ktor client the delegate factory creates with the two log points of the DeepSeek channel:
  *
  * - **log point 2** `Request to Deepseek` — emitted in the **Transform** phase of the request
  *   pipeline, where the outgoing body (String / [TextContent] / [OutgoingContent.ByteArrayContent])
@@ -30,13 +25,8 @@ import kotlinx.serialization.json.Json
  *   the downstream DataConversion phases can still consume it.
  *
  * Bodies go to [RequestLogger] as the json Koog actually sent/received; masking of secrets is
- * RequestLogger's job (T5, D4) — this factory logs nothing itself and knows no api key.
- *
- * This class only decorates transport: no other log point belongs here (1/5 = ChatRoutes,
- * 4 = FuelingInfoTool).
- *
- * @param delegate transport the BaseUrl/headers/timeouts/json of Koog are delegated to
- * @param requestLogger R2 sink of log points 2 and 3 (T5)
+ * RequestLogger's job (T5, D4) — this factory logs nothing itself and knows no api key. Log points
+ * 1/5 belong to ChatRoutes, point 4 to FuelingInfoTool.
  */
 class DeepSeekLoggingHttpClientFactory(
     private val delegate: KoogHttpClient.Factory,
@@ -44,9 +34,8 @@ class DeepSeekLoggingHttpClientFactory(
 ) : KoogHttpClient.Factory {
 
     /**
-     * Creates the delegate's client and attaches the two log points to it. The delegate must
-     * produce a [KtorKoogHttpClient] (the only factory whose transport exposes the Ktor pipelines);
-     * anything else fails fast instead of losing log points 2/3 silently (R8).
+     * The delegate must produce a [KtorKoogHttpClient] (the only factory whose transport exposes
+     * the Ktor pipelines); anything else fails fast instead of silently losing log points 2/3 (R8).
      */
     override fun create(
         clientName: String,

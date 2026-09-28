@@ -50,7 +50,7 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 |----------|-------------|---------------------------|
 | 5d `TurbofaAgent.chat(messages): String` | koog-engineer | the only LLM entry point used here |
 | `AppConfig` (apiKey, model, DB settings) | api-client-engineer | constructor inputs during wiring |
-| 5e history semantics | test-engineer, reviewer | provided by this agent: cache + file, cleared on restart, D5 timestamps |
+| 5e history semantics | test-engineer, correctness-reviewer | provided by this agent: cache + file, cleared on restart, D5 timestamps |
 | `ChatService` | api-client-engineer (route, T8/T9) | suspend entry the route awaits |
 | 5a `RequestLogger` | logging-engineer | known, but no R2 call sites are owned here |
 

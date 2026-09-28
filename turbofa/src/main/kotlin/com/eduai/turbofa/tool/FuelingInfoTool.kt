@@ -1,4 +1,3 @@
-// src/main/kotlin/com/eduai/turbofa/tool/FuelingInfoTool.kt
 package com.eduai.turbofa.tool
 
 import ai.koog.agents.core.tools.Tool
@@ -17,20 +16,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 
-/** Arguments of the get_fueling_info LLM tool; parameters per resources/tools/get_fueling_info.json (5b, D6). */
+/** Arguments of get_fueling_info; parameters follow resources/tools/get_fueling_info.json (5b, D6). */
 @Serializable
 data class GetFuelInfoArgs(
     @SerialName("fueling_id") val fuelingId: String,
 )
 
 /**
- * Koog tool handler for get_fueling_info (R7): aggregates the proliv data of one fueling from
- * the fueling / payment / vendors databases through the read-only queries of [FuelingDataSource]
- * (spec 5f) and returns it as compact JSON for DeepSeek to summarize.
- *
- * The descriptor (name/description/parameters) is loaded by the agent from
- * resources/tools/get_fueling_info.json and passed in as-is, so the handler reports exactly the
- * schema the model was given (5b).
+ * Koog tool handler for get_fueling_info (R7): aggregates the data of one fueling from the
+ * fueling / payment / vendors databases through the read-only queries of [FuelingDataSource]
+ * (spec 5f) and returns it as compact JSON for DeepSeek to summarize. The descriptor is passed in
+ * as loaded from resources/tools/get_fueling_info.json, so the handler reports exactly the schema
+ * the model was given (5b).
  */
 class FuelingInfoTool(
     private val dataSource: FuelingDataSource,
@@ -53,7 +50,7 @@ class FuelingInfoTool(
 
         val result = buildJsonObject {
             put("fuelings", rowToJson(fueling))
-            // null when there is no fueling row: without user_id the query cannot be scoped
+            // Without user_id (no fueling row) the payments query cannot be scoped — null, not [].
             put(
                 "payments",
                 userId?.let { rowsToJson(dataSource.paymentsByUserId(it, PAYMENTS_LIMIT)) } ?: JsonNull,
@@ -74,23 +71,16 @@ class FuelingInfoTool(
     override fun encodeResultToString(result: String, serializer: JSONSerializer): String = result
 
     private companion object {
-        /** D8: the fueling user's latest 10 payments (R11). */
+        // D8's payment list and the event list are capped to keep the tool payload small (R11).
         const val PAYMENTS_LIMIT = 10
-
-        /** R11: the latest 20 events of the fueling. */
         const val EVENTS_LIMIT = 20
 
-        /** Raw JDBC column map (spec 5f) → JSON object; no row → JSON null. */
         fun rowToJson(row: Map<String, Any?>?): JsonElement =
             if (row == null) JsonNull else JsonObject(row.mapValues { (_, value) -> valueToJson(value) })
 
         fun rowsToJson(rows: List<Map<String, Any?>>): JsonElement =
             JsonArray(rows.map { rowToJson(it) })
 
-        /**
-         * Values stay opaque (spec 5f): primitives keep their type, everything else
-         * (Timestamps, jsonb objects, ...) is stringified as-is.
-         */
         fun valueToJson(value: Any?): JsonElement = when (value) {
             null -> JsonNull
             is JsonElement -> value

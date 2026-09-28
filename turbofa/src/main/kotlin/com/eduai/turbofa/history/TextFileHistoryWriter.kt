@@ -27,7 +27,6 @@ class TextFileHistoryWriter(private val file: Path) {
         )
     }
 
-    /** R4: truncates the file; called by the startup wiring (Application.kt, T9). */
     fun clear() {
         file.parent?.let { Files.createDirectories(it) }
         Files.writeString(

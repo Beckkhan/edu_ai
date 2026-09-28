@@ -58,6 +58,24 @@ is ChatService's job (spec 5d), so `chat(messages)` never adds the id itself.
   method/payment system, payment status; station id/name, brand, location (region,
   city); fueling time range from start to completion. Only factual tool-result data —
   no analysis or recommendations
+- NEVER pass DB credentials (DB_URL, DB_USER, DB_PASSWORD, postgres:// strings) to
+  AI APIs. The AI must receive only DDL (docs/schema.sql) and JSON results from tool
+  calls (D11)
+- Tool handlers execute SQL on the backend with credentials from .env (via
+  data-engineer). The AI generates only tool args (JSON) — never SQL, never DDL
+- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
+  non-trivial business logic that cannot be expressed via function names, external
+  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
+  Decision log references (D1, D4, ...) on the code that implements those decisions
+- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
+  SharedDI with fun init()); comments before self-evident modules/functions
+  ("Env configuration", "Read-only pools"); comments restating the name of the
+  function/variable/module ("Env configuration (D7)" above configModule); comments
+  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
+  obvious Kotlin syntax; comments like "// add user to DB" before a function named
+  addUserToDb()
+- Variable/function names must be self-documenting; if a function needs a comment to
+  be understood — rename or decompose it
 
 ## Desired response format
 

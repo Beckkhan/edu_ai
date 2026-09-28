@@ -22,6 +22,8 @@ history into one round-trip, so a Bruno request flows exactly as specified in R9
 
 ## Outputs
 - Application.kt — Ktor bootstrap, module wiring (mainClass com.eduai.turbofa.ApplicationKt)
+- di/AppModule.kt, di/SharedDI.kt — Kodein modules (config/db/client/logging/service)
+  and the global DI context (T22)
 - service/ChatService.kt — orchestrates: prompt + optional fueling_id → DeepSeek
   (with the tool when fueling_id is present, R9) → response to Bruno
 - history/ChatHistoryStore.kt, history/InMemoryHistoryCache.kt,
@@ -36,9 +38,26 @@ history into one round-trip, so a Bruno request flows exactly as specified in R9
   top-level initializer above Application.kt's `log` property, before the first SLF4J
   logger; main() is too late
 - Simple readable code, no interfaces with a single implementation (R10)
+- DI via Kodein DI (AppModule). All dependencies created via bind<T>() with
+  singleton { } (T22)
+- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
+  non-trivial business logic that cannot be expressed via function names, external
+  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
+  Decision log references (D1, D4, ...) on the code that implements those decisions
+- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
+  SharedDI with fun init()); comments before self-evident modules/functions
+  ("Env configuration", "Read-only pools"); comments restating the name of the
+  function/variable/module ("Env configuration (D7)" above configModule); comments
+  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
+  obvious Kotlin syntax; comments like "// add user to DB" before a function named
+  addUserToDb()
+- Variable/function names must be self-documenting; if a function needs a comment to
+  be understood — rename or decompose it
 
 ## Workflow
-1. Wire the Ktor application from the spec's package tree
+1. Wire the Ktor application via Kodein: Application.module() builds the DI context
+   from di/AppModule.kt, calls SharedDI.init(context) and resolves dependencies with
+   `by di.instance<T>()` — no manual wiring (T22)
 2. Implement ChatService per the R9 chain (with and without fueling_id)
 3. Implement the history store trio; truncate the history file on startup, and truncate
    logs/turbofa.log in the same startup step (top-level initializer above the `log`

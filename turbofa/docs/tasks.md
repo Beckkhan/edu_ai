@@ -61,23 +61,43 @@ Artifact paths: `.kt` files are relative to `src/main/kotlin/com/eduai/turbofa/`
 - [x] T17 | owner: specification/skill-designer | artifact: .claude/agents (R2 label sync) | status: done | verified: ok
   - acceptance: old R2 labels ("Request to Deepseek", "Response from Deepseek", "Tool call") replaced with the from/to direction labels of contract 5a/D10 in every .claude/agents file that carried them; point counts updated five → six; repeat grep returns zero matches
   - note: documentation synced with contract 5a/D10
+- [x] T18 | owner: specification/skill-designer | artifact: .claude/agents (token efficiency) | status: done | verified: ok
+  - acceptance: minimal-comments constraint (R11) added to every agent definition except cto and reviewer; verdict-only gradle reading (--quiet / tail -20, error-section-only on failure) added to test-engineer, reviewer and cto; reviewer re-runs only the failing test (`./gradlew test --tests "ClassName.methodName"`); no application code and no specification changed
+  - note: requested by the stakeholder: radical token consumption reduction
+- [x] T19 | owner: specification/skill-designer | artifact: .code-style.md, .claude/agents/quality/code-style-reviewer.md, build.gradle.kts | status: done | verified: ok
+  - acceptance: .code-style.md with the ten stakeholder sections (formatting, naming, imports, Kotlin specifics, error handling, DI, comments, functions, tests, tools); code-style-reviewer agent in quality/ following the frozen skeleton plus its skill.md (R2); ktlint + detekt plugins wired in build.gradle.kts and .editorconfig created (4 spaces, 120 chars); .claude/README.md quality roster + SKILL vs AGENT rationale + workflow updated; cto spawns the style gate on every diff; no application code changed
+  - note: requested by the stakeholder: unified code-style standard + enforcement agent; detekt green via detekt-baseline.xml (8 pre-existing findings baselined); ktlintCheck flags pre-existing violations in application code — left unfixed per the do-not-change-application-code constraint and excluded from `check` until a follow-up task makes the tree ktlint-clean
+- [x] T20 | owner: specification/skill-designer | artifact: .claude/agents/quality/{correctness,simplicity,git}-reviewer.md | status: done | verified: ok
+  - acceptance: reviewer.md deleted (option A — no facade); correctness/simplicity/git reviewers created read-only (Read, Glob, Grep, Bash) with disjoint scopes plus their skill.md files (R2); cto spawns the chain sequentially and hands back on any findings; /process command updated; README roster + SKILL vs AGENT rationale + workflow updated; dangling reviewer references fixed in skill.md contract tables; no application code changed
+  - note: requested by the stakeholder: split the monolithic reviewer for deeper, specialized reviews
+- [x] T21 | owner: specification/architect | artifact: docs/schema.sql, docs/project-specification.md, .claude/agents (security constraints) | status: done | verified: ok
+  - acceptance: security audit over LLM-context sources (client/tool), SYSTEM_PROMPT, tool descriptor, RequestLogger and .env.example — no credential leakage (clean); docs/schema.sql DDL for the five §6 tables with relationship comments, structure only, no DML, no credentials; spec Decision D11 (DDL-first) + §6.1 (Schema DDL) added; koog-engineer and data-engineer security constraints added; .code-style.md Security section added; no application code changed
+  - note: requested by the stakeholder: DDL-first approach and credential security audit
+- [x] T22 | owner: development/kotlin-engineer | artifact: src/main/kotlin/com/eduai/turbofa/di/{AppModule,SharedDI}.kt, Application.kt | status: done | verified: ok
+  - acceptance: five Kodein modules (config/db/client/logging/service) with bind<T>() with singleton { } for every service; SharedDI with lateinit context + init(context); Application.module() builds the DI context, calls SharedDI.init and resolves dependencies (routing, history clear, shutdown hooks) via by di.instance<T>(); kodein-di-jvm:7.20.2 added to build.gradle.kts; tool call logic and RequestLogger untouched; ./gradlew build green
+  - note: requested by the stakeholder: DI via Kodein
+- [x] T23 | owner: development/kotlin-engineer | artifact: src/main/kotlin/com/eduai/turbofa/** (comment cleanup) | status: done | verified: ok
+  - acceptance: all redundant comments removed across the project (AppModule.kt, SharedDI.kt, Application.kt, etc.); only comments on non-trivial logic remain
+  - deps: T22
+  - note: requested by the stakeholder — eradicate the comment mania
+  - note (CTO): ~157 comment lines removed across main sources (kotlin-engineer sweep + stakeholder-mandated pre-clean of di/ and Application.kt); review chain fully green — correctness (comment-only diff verified line-by-line, D4/D5/R5/secret contracts intact), simplicity (no dead declarations, no import/direction churn), git (ignore rules intact, no secrets/artifacts in committable tree), style (zero new violations; pre-existing ktlint debt unchanged). Residuals recorded for the Specification team: (a) tool/FuelingInfoTool PAYMENTS_LIMIT/EVENTS_LIMIT duplicate the FuelingDataSource caps — behavior-preserving consolidation candidate; (b) di/SharedDI.context is write-only; (c) the whole T18–T23 changeset is uncommitted — git-reviewer suggests atomic commits when committing; (d) ktlint debt follow-up already documented under T19
 
 ## Coverage
 
 | Item | Task(s) |
 |------|---------|
 | R1 three teams + CTO lead | T12 (harness exists; exercised by the /process run) |
-| R2 agents/skills folder + rationale + skill.md per agent | T13 |
+| R2 agents/skills folder + rationale + skill.md per agent | T13, T19, T20 |
 | R3 docs folder with specifications | satisfied by the specification phase (requirements.md, project-specification.md, this file) |
 | R4 stateless DeepSeek, history cache + text file cleared on restart | T7, T9 |
-| R5 Kotlin, external read-only Postgres, no schema creation | T3, T11 |
+| R5 Kotlin, external read-only Postgres, no schema creation | T3, T11, T21 |
 | R5 Kotlin build infrastructure (settings.gradle.kts + wrapper, ./gradlew works) | T14 |
 | R6 all DeepSeek calls via Koog | T2, T4, T6 |
 | R7 get_fueling_info + descriptor + performs work + non-empty tools | T1, T2, T3, T4 |
 | R8 five log points, json bodies | T5, T6, T8 |
 | R9 Bruno request contract and chain | T7, T8 |
 | R10 no unnecessary abstractions | T12 (reviewer verdict; also pinned in T4/T7 acceptance) |
-| R11 efficient token usage | T3 (LIMIT 10/20), T4 |
+| R11 efficient token usage | T3 (LIMIT 10/20), T4, T18 |
 | R12 docs → tasks → /process, verification-only, CTO-only statuses | T12 (process run); this file |
 | D1 AIAgent + singleRunStrategy | T4 |
 | D2 history as one Prompt, no Koog session | T4, T7 |
