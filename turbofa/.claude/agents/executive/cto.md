@@ -33,6 +33,8 @@ never alter the specification itself.
 - Blocked tasks never start before their dependencies are done
 - Done-and-unchanged tasks undergo verification only (correctness-reviewer), never re-execution
 - Only the CTO updates statuses in docs/tasks.md, immediately after a task finishes or fails
+- Spawn prompts are token-efficient (T26): contract IDs only — never contract text,
+  never restated definition content
 - No application code changes outside the tasks listed in docs/tasks.md
 
 ## Workflow
@@ -42,8 +44,15 @@ never alter the specification itself.
    the agent name after the slash in `owner: <team>/<agent>` — identity comes from the
    `name:` frontmatter, not the folder; e.g. `development/koog-engineer` → subagent
    `koog-engineer`), with a prompt containing the task line, its acceptance criteria,
-   and the contracts it depends on. The agent's own definition
+   and the contract IDs it depends on (e.g. 5a, 5f) — the subagent reads the spec
+   section itself via the Read tool. The agent's own definition
    (.claude/agents/<team>/<agent>.md) is loaded as its instructions automatically
+   Spawn prompt structure (token-efficient, ~90-120 tokens):
+   - Task line: the T<n> line of docs/tasks.md
+   - Acceptance criteria: the task's `acceptance:` sub-bullets
+   - Contract IDs: from the task's `contracts:` sub-bullet (e.g. "contracts: 5a, 5d, 5e")
+   - NO restated definition content (the agent loads its own .md automatically)
+   - NO verbatim contract text (the agent reads spec §5x via the Read tool if needed)
 4. Spawn the reviewers sequentially on the diff: correctness-reviewer; on approve,
    simplicity-reviewer; on approve, git-reviewer. If all approve, proceed; on findings
    from any reviewer, hand the task back to the owner agent with the findings

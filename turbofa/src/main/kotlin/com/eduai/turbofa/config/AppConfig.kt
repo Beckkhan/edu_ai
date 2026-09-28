@@ -2,22 +2,15 @@ package com.eduai.turbofa.config
 
 import java.io.File
 
-/**
- * The only place in turbofa that reads the environment.
- *
- * A variable that is not set falls back to the `.env` file of the working directory (layout of
- * .env.example); the environment wins over the file. Per D7/E3 the three JDBC URLs are derived here
- * from DB_HOST / DB_PORT plus the fixed database names `fueling`, `payment`, `vendors`. The .env
- * `DB_URL` points at the `postgres` admin database, which holds none of the domain tables, and is
- * deliberately never read. Credentials have no defaults: a missing one fails at startup with a
- * clear message instead of surfacing as an authentication error on the first request, and no
- * default ever carries a secret.
- */
 class AppConfig(env: Map<String, String> = loadEnv()) {
 
     val deepSeekApiKey: String = env.required("DEEPSEEK_API_KEY")
 
     val deepSeekModel: String = env.optional("DEEPSEEK_MODEL") ?: DEFAULT_DEEPSEEK_MODEL
+
+    val ollamaBaseUrl: String = env.optional("OLLAMA_BASE_URL") ?: DEFAULT_OLLAMA_BASE_URL
+
+    val ollamaModel: String = env.optional("OLLAMA_MODEL") ?: DEFAULT_OLLAMA_MODEL
 
     val dbHost: String = env.required("DB_HOST")
 
@@ -39,6 +32,8 @@ class AppConfig(env: Map<String, String> = loadEnv()) {
         const val ENV_FILE = ".env"
 
         private const val DEFAULT_DEEPSEEK_MODEL = "deepseek-chat"
+        private const val DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
+        private const val DEFAULT_OLLAMA_MODEL = "qwen3:8b"
         private const val DEFAULT_DB_PORT = 5432
 
         // Fixed domain database names of D7; DB_URL (the admin database) is never used for them (E3).

@@ -30,6 +30,9 @@ dependencies {
 
     // External DB access: plain JDBC + HikariCP, read-only
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("org.jetbrains.exposed:exposed-core:0.56.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.56.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.56.0")
     implementation("com.zaxxer:HikariCP:6.2.1")
     implementation("org.kodein.di:kodein-di-jvm:7.20.2")
     implementation("org.postgresql:postgresql:42.7.7")

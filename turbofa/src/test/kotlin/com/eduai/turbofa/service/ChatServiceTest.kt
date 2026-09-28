@@ -1,4 +1,3 @@
-// src/test/kotlin/com/eduai/turbofa/service/ChatServiceTest.kt
 package com.eduai.turbofa.service
 
 import com.eduai.turbofa.client.deepseek.ChatMessage
@@ -18,22 +17,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * Unit tests of the R9 round-trip (spec 3.1, contracts 5d/5e): the agent is a MockK mock, the
- * history store is the real one with its text file pointed at a temp directory. No network, no
- * DB, no .env — every assertion goes through the [TurbofaAgent] seam ChatService owns.
- */
 class ChatServiceTest {
 
     private val fuelingId = "99f068ca-ac6a-43fb-a53b-d2e7a573cfe2"
 
-    /** The real history store (5e) over a throwaway temp file — project files stay untouched. */
     private fun historyIn(dir: Path): ChatHistoryStore =
         ChatHistoryStore(InMemoryHistoryCache(), TextFileHistoryWriter(dir.resolve("chat-history.txt")))
 
     private fun tempDir(): Path = Files.createTempDirectory("turbofa-chat-service-test")
 
-    /** A mocked agent answering [replies] in order and recording every message list it is handed. */
+    private fun service(
+        agent: TurbofaAgent,
+        history: ChatHistoryStore,
+        ollamaAgent: TurbofaAgent = mockk(),
+    ): ChatService = ChatService(deepseekAgent = agent, ollamaAgent = ollamaAgent, history = history)
+
     private fun recordingAgent(replies: List<String>): Pair<TurbofaAgent, MutableList<List<ChatMessage>>> {
         val calls = mutableListOf<List<ChatMessage>>()
         val agent = mockk<TurbofaAgent> {
@@ -48,7 +46,7 @@ class ChatServiceTest {
     @Test
     fun `with fueling_id the outgoing user message carries the UUID and the raw prompt`() = runTest {
         val (agent, calls) = recordingAgent(listOf("Fueling 99f068ca was delivered."))
-        val service = ChatService(agent, historyIn(tempDir()))
+        val service = service(agent, historyIn(tempDir()))
 
         val reply = service.chat("What happened with my fueling?", fuelingId)
 
@@ -69,7 +67,7 @@ class ChatServiceTest {
     @Test
     fun `without fueling_id nothing is embedded - the agent gets the plain prompt`() = runTest {
         val (agent, calls) = recordingAgent(listOf("Hello!"))
-        val service = ChatService(agent, historyIn(tempDir()))
+        val service = service(agent, historyIn(tempDir()))
 
         service.chat("Hello")
 
@@ -85,7 +83,7 @@ class ChatServiceTest {
     fun `history is replayed in order and only the outgoing message carries the fueling_id`() = runTest {
         val (agent, calls) = recordingAgent(listOf("Fueling is done.", "You are welcome."))
         val history = historyIn(tempDir())
-        val service = ChatService(agent, history)
+        val service = service(agent, history)
 
         service.chat("What happened with my fueling?", fuelingId)
         service.chat("Thanks")
@@ -108,6 +106,17 @@ class ChatServiceTest {
     }
 
     @Test
+    fun `provider OLLAMA routes to the ollama agent and the default stays DEEPSEEK - D12`() = runTest {
+        val deepseek = recordingAgent(listOf("deepseek answer")).first
+        val ollama = recordingAgent(listOf("ollama answer")).first
+        val history = historyIn(tempDir())
+        val service = service(deepseek, history, ollama)
+
+        assertEquals("ollama answer", service.chat("hi", provider = Provider.OLLAMA))
+        assertEquals("deepseek answer", service.chat("hi"))
+    }
+
+    @Test
     fun `the assistant record is timestamped at the agent response, not at request or write time - D5`() = runTest {
         var agentReturnedAt: Instant? = null
         val agent = mockk<TurbofaAgent> {
@@ -120,7 +129,7 @@ class ChatServiceTest {
             }
         }
         val history = historyIn(tempDir())
-        val service = ChatService(agent, history)
+        val service = service(agent, history)
 
         val requestSentAt = Instant.now()
         service.chat("status?")
@@ -149,7 +158,7 @@ class ChatServiceTest {
         val dir = tempDir()
         val file = dir.resolve("chat-history.txt")
         val history = historyIn(dir)
-        val service = ChatService(recordingAgent(listOf("OK")).first, history)
+        val service = service(recordingAgent(listOf("OK")).first, history)
 
         service.chat("hi")
 
@@ -174,7 +183,7 @@ class ChatServiceTest {
         val dir = tempDir()
         val file = dir.resolve("chat-history.txt")
         val history = historyIn(dir)
-        val service = ChatService(recordingAgent(listOf("line one\nline two")).first, history)
+        val service = service(recordingAgent(listOf("line one\nline two")).first, history)
 
         service.chat("hi")
 

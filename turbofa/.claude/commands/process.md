@@ -23,8 +23,12 @@ Any gap you find is escalated to the Specification team — never fixed inline.
    - subagent type = the agent name after the slash in `owner: <team>/<agent>`
      (identity comes from the `name:` frontmatter, not the folder —
      e.g. `development/koog-engineer` → subagent type `koog-engineer`)
-   - prompt = the task line, its acceptance criteria, and the contracts it depends on
+   - prompt = the task line, its acceptance criteria, and the contract IDs it depends on
+     (from the task's `contracts:` sub-bullet, e.g. "contracts: 5a, 5f") — the subagent
+     reads the spec section itself via the Read tool
    - the agent's own definition (`.claude/agents/<team>/<agent>.md`) loads automatically as its instructions
+   - spawn template (token-efficient, ~90-120 tokens, T26): task line + acceptance +
+     contract IDs only — NO restated definition content, NO verbatim contract text
 4. **Done-and-unchanged tasks undergo verification only**: spawn the
    `correctness-reviewer` subagent on the existing diff, never the owner agent again (R12).
 5. After a task finishes, spawn the reviewers sequentially on the task's diff:

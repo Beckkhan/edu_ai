@@ -31,17 +31,9 @@ correctness review or vice versa.
 - On ktlint violation: report file:line:rule, suggest auto-fix via ktlintFormat
 - On detekt warning: report only severity=error findings
 - Do NOT rewrite code beyond style fixes; functional changes belong to the owning engineer
-- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
-  non-trivial business logic that cannot be expressed via function names, external
-  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
-  Decision log references (D1, D4, ...) on the code that implements those decisions
-- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
-  SharedDI with fun init()); comments before self-evident modules/functions
-  ("Env configuration", "Read-only pools"); comments restating the name of the
-  function/variable/module ("Env configuration (D7)" above configModule); comments
-  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
-  obvious Kotlin syntax; comments like "// add user to DB" before a function named
-  addUserToDb()
+- Minimal comments (R11): comments only for non-trivial logic, external contracts,
+  library workarounds or D-references; the FORBIDDEN list and examples live in
+  .code-style.md (Comments section)
 - Variable/function names must be self-documenting; if a function needs a comment to
   be understood — rename or decompose it
 

@@ -1,117 +1,81 @@
 package com.eduai.turbofa.db
 
-import org.postgresql.util.PGobject
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.ResultSet
-import javax.sql.DataSource
+import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 
 /**
- * The five SELECT-only queries of spec 5f: the fueling data of one fueling_id, gathered from the
- * `fueling`, `payment` and `vendors` databases (D7).
- *
- * Every id is a TEXT UUID (D6), hence the String parameters. Rows come back as ordered raw column
- * maps and go to the tool as-is (no domain classes, R10): the heterogeneous epoch timestamps
- * (numeric / bigint / text) stay opaque, and only jsonb columns are unwrapped to their text,
- * because a [PGobject] cannot be serialized.
+ * Five SELECT-only queries for fueling data (spec 5f). Gathers data from
+ * fueling/payment/vendors databases.
  */
-class FuelingDataSource(
-    private val fuelingDatabase: DataSource,
-    private val paymentDatabase: DataSource,
-    private val vendorsDatabase: DataSource,
-) {
+class FuelingDataSource(databases: DataSourceFactory) {
+    private val fuelingDatabase: Database = databases.fuelingDatabase
+    private val paymentDatabase: Database = databases.paymentDatabase
+    private val vendorsDatabase: Database = databases.vendorsDatabase
 
-    /**
-     * 1) The fueling row, or null when the id is unknown. `fuelings` is partitioned by month; the
-     * parent table routes the lookup across its partitions.
-     *
-     * The parent carries no primary key, so should a UUID ever repeat the first row is returned.
-     */
     fun fuelingById(id: String): Map<String, Any?>? =
-        query(fuelingDatabase, SQL_FUELING_BY_ID, id).firstOrNull()
+        transaction(fuelingDatabase) {
+            FuelingsTable
+                .selectAll()
+                .where { FuelingsTable.fuelingId eq id }
+                .firstOrNull()
+                ?.toColumnMap()
+        }
 
-    /**
-     * 2) The user's [limit] latest payments (D8): `payments` has no fueling_id and its order_id is
-     * not a fueling id (verified), so the user_id from [fuelingById] is the only link.
-     */
-    fun paymentsByUserId(userId: String, limit: Int = PAYMENT_LIMIT): List<Map<String, Any?>> =
-        query(paymentDatabase, SQL_PAYMENTS_BY_USER, userId, limit)
+    fun paymentsByUserId(userId: String, limit: Int = PAYMENT_LIMIT): List<Map<String, Any?>> {
+        require(limit > 0) { "limit must be positive" }
+        return transaction(paymentDatabase) {
+            PaymentsTable
+                .selectAll()
+                .where { PaymentsTable.userId eq userId }
+                .orderBy(PaymentsTable.createdAt to SortOrder.DESC)
+                .limit(limit)
+                .map { it.toColumnMap() }
+        }
+    }
 
-    /** 3) The vendor-side order of the fueling (verified 1:1). */
     fun fuelingOrdersById(id: String): Map<String, Any?>? =
-        query(vendorsDatabase, SQL_FUELING_ORDER_BY_ID, id).firstOrNull()
+        transaction(vendorsDatabase) {
+            FuelingOrdersTable
+                .selectAll()
+                .where { FuelingOrdersTable.fuelingId eq id }
+                .firstOrNull()
+                ?.toColumnMap()
+        }
 
-    /** 4) The vendor-side events of the fueling, newest first. */
-    fun fuelingEventsById(id: String, limit: Int = EVENT_LIMIT): List<Map<String, Any?>> =
-        query(vendorsDatabase, SQL_FUELING_EVENTS_BY_ID, id, limit)
+    fun fuelingEventsById(id: String, limit: Int = EVENT_LIMIT): List<Map<String, Any?>> {
+        require(limit > 0) { "limit must be positive" }
+        return transaction(vendorsDatabase) {
+            FuelingEventsTable
+                .selectAll()
+                .where { FuelingEventsTable.fuelingId eq id }
+                .orderBy(FuelingEventsTable.createdAt to SortOrder.DESC)
+                .limit(limit)
+                .map { it.toColumnMap() }
+        }
+    }
 
-    /**
-     * 5) The vendor order of the fueling, best-effort (D9): `vendor_fueling_orders` uses the same
-     * UUID key space but covers only a subset of fuelings, so an empty result is normal.
-     */
     fun vendorFuelingOrdersById(id: String): Map<String, Any?>? =
-        query(vendorsDatabase, SQL_VENDOR_ORDER_BY_ID, id).firstOrNull()
-
-    private fun query(
-        dataSource: DataSource,
-        sql: String,
-        id: String,
-        limit: Int? = null,
-    ): List<Map<String, Any?>> {
-        require(limit == null || limit > 0) { "limit must be positive" }
-        var connection: Connection? = null
-        var statement: PreparedStatement? = null
-        var resultSet: ResultSet? = null
-        try {
-            val openedConnection = dataSource.connection
-            connection = openedConnection
-            val preparedStatement = openedConnection.prepareStatement(sql)
-            statement = preparedStatement
-            preparedStatement.setString(1, id)
-            if (limit != null) preparedStatement.setInt(2, limit)
-            val rows = preparedStatement.executeQuery()
-            resultSet = rows
-            val result = ArrayList<Map<String, Any?>>()
-            while (rows.next()) result += columnMap(rows)
-            return result
-        } finally {
-            resultSet?.close()
-            statement?.close()
-            connection?.close()
+        transaction(vendorsDatabase) {
+            VendorFuelingOrdersTable
+                .selectAll()
+                .where { VendorFuelingOrdersTable.fuelingId eq id }
+                .firstOrNull()
+                ?.toColumnMap()
         }
-    }
 
-    private fun columnMap(resultSet: ResultSet): Map<String, Any?> {
-        val metadata = resultSet.metaData
-        val row = LinkedHashMap<String, Any?>(metadata.columnCount)
-        for (column in 1..metadata.columnCount) {
-            row[metadata.getColumnLabel(column)] = serializableValue(resultSet.getObject(column))
+    private fun ResultRow.toColumnMap(): Map<String, Any?> =
+        fieldIndex.entries.associate { (expression, _) ->
+            val column = expression as Column<*>
+            column.name to this[column]
         }
-        return row
-    }
-
-    private fun serializableValue(value: Any?): Any? = when (value) {
-        is PGobject -> value.value
-        else -> value
-    }
 
     companion object {
+        // D8's payment list and the event list are capped to keep the tool payload small (R11).
         const val PAYMENT_LIMIT = 10
         const val EVENT_LIMIT = 20
-
-        // The five statements of spec 5f, in order; SELECT only (R5).
-        private const val SQL_FUELING_BY_ID = "SELECT * FROM fuelings WHERE fueling_id = ?"
-
-        private const val SQL_PAYMENTS_BY_USER =
-            "SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
-
-        private const val SQL_FUELING_ORDER_BY_ID =
-            "SELECT * FROM fueling_orders WHERE fueling_id = ?"
-
-        private const val SQL_FUELING_EVENTS_BY_ID =
-            "SELECT * FROM fueling_events WHERE fueling_id = ? ORDER BY created_at DESC LIMIT ?"
-
-        private const val SQL_VENDOR_ORDER_BY_ID =
-            "SELECT * FROM vendor_fueling_orders WHERE fueling_id = ?"
     }
 }

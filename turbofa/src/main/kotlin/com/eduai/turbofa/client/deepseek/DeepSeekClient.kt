@@ -13,25 +13,14 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 
 /**
- * Resolves a configured model id (DEEPSEEK_MODEL) to a Koog [LLModel].
- *
- * An id Koog does not know (e.g. AppConfig's `deepseek-chat` default) still runs: it keeps the
- * configured id but takes the capabilities of the known DeepSeek model — a bare
- * `LLModel(provider, id)` would carry no capabilities, and Koog rejects every request of such a
- * model with "does not support completion".
+ * An id Koog does not know still runs: it keeps the configured id but takes the
+ * capabilities of the known DeepSeek model — a bare LLModel has none, and Koog rejects
+ * every request of such a model.
  */
-private fun resolveModel(id: String): LLModel =
+internal fun resolveModel(id: String): LLModel =
     DeepSeekModels.models.firstOrNull { it.id == id }
         ?: DeepSeekModels.DeepSeekV4Pro.copy(id = id)
 
-/**
- * The Koog DeepSeek stack of spec 3.3: a [DeepSeekLLMClient] (R6 — DeepSeek is only ever reached
- * through Koog) wrapped in the [PromptExecutor] the agent runs on.
- *
- * The api key and the model id come from the constructor (AppConfig) — no environment access here.
- * The injectable HTTP client factory is the R2 logging seam (T6); this class deliberately does not
- * log requests or responses itself.
- */
 class DeepSeekClient(
     apiKey: String,
     modelId: String,
@@ -56,7 +45,7 @@ class DeepSeekClient(
 
     fun close() = executor.close()
 
-    private companion object {
+    companion object {
         const val CONNECT_TIMEOUT_MILLIS = 15_000L
 
         /** The tool queries three databases, and DeepSeek summaries of the result take a while. */
@@ -64,5 +53,5 @@ class DeepSeekClient(
     }
 }
 
-private fun defaultHttpClientFactory(): KtorKoogHttpClient.Factory =
+internal fun defaultHttpClientFactory(): KtorKoogHttpClient.Factory =
     KtorKoogHttpClient.Factory(baseClient = HttpClient(CIO), withSse = false)

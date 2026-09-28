@@ -21,8 +21,9 @@ exactly one owning agent each — so the CTO can dispatch them without judgment 
 
 ## Outputs
 - docs/tasks.md: fixed-line backlog — `- [ ] T<n> | owner: <team>/<agent> | artifact:
-  <path> | status: pending | verified: -` with `acceptance:` / `deps:` sub-bullets;
-  statuses pending | in progress | done | blocked
+  <path> | status: pending | verified: -` with `acceptance:` / `deps:` sub-bullets and
+  a `contracts:` sub-bullet (comma-separated list of the §5a–5f IDs the task depends
+  on); statuses pending | in progress | done | blocked
 
 ## Constraints
 - Every task has exactly one owner — the agent whose scope in the spec covers it
@@ -32,18 +33,13 @@ exactly one owning agent each — so the CTO can dispatch them without judgment 
   implementation task
 - A done-and-unchanged task gets a verification-only note (R12) — the CTO spawns
   only correctness-reviewer for it, never the owner again
+- Every task line must include a contracts: sub-bullet listing the §5a–5f IDs it
+  depends on (e.g. data-engineer tasks depend on 5f; koog-engineer tasks on 5b, 5c,
+  5d; logging-engineer on 5a). This enables token-efficient spawns (T26)
 - Only the CTO changes statuses after this file is handed over
-- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
-  non-trivial business logic that cannot be expressed via function names, external
-  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
-  Decision log references (D1, D4, ...) on the code that implements those decisions
-- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
-  SharedDI with fun init()); comments before self-evident modules/functions
-  ("Env configuration", "Read-only pools"); comments restating the name of the
-  function/variable/module ("Env configuration (D7)" above configModule); comments
-  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
-  obvious Kotlin syntax; comments like "// add user to DB" before a function named
-  addUserToDb()
+- Minimal comments (R11): comments only for non-trivial logic, external contracts,
+  library workarounds or D-references; the FORBIDDEN list and examples live in
+  .code-style.md (Comments section)
 - Variable/function names must be self-documenting; if a function needs a comment to
   be understood — rename or decompose it
 

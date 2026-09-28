@@ -14,73 +14,112 @@ Artifact paths: `.kt` files are relative to `src/main/kotlin/com/eduai/turbofa/`
 
 - [x] T1 | owner: development/koog-engineer | artifact: src/main/resources/tools/get_fueling_info.json | status: done | verified: ok
   - acceptance: file exists and is valid JSON; descriptor per spec 5b: name "get_fueling_info", fueling_id parameter with type "string" (UUID, D6) — not int; required ["fueling_id"]; koog-engineer loads it at startup
+  - contracts: 5b
 - [x] T2 | owner: development/koog-engineer | artifact: tool/FuelingInfoTool.kt | status: done | verified: ok
   - acceptance: Koog Tool<GetFuelInfoArgs, String> with the descriptor from T1; handler calls FuelingDataSource (T3, signatures per spec 5f) to aggregate from the three DBs; returns JSON with the fuelings row + payments (user-scoped, LIMIT 10, D8) + fueling_orders + fueling_events (LIMIT 20) + vendor_fueling_orders (best-effort, D9)
+  - contracts: 5a, 5b, 5f
   - deps: T1
 - [x] T3 | owner: development/data-engineer | artifact: db/DataSourceFactory.kt, db/FuelingDataSource.kt | status: done | verified: ok
   - acceptance: three HikariCP DataSources (fueling, payment, vendors databases, D7) built from the three JDBC URLs provided by AppConfig (T8) — URL derivation (DB_HOST/DB_PORT/DB_USER/DB_PASSWORD + fixed database names) is AppConfig's per spec 5f, E3; FuelingDataSource exposes fuelingById(id: String), paymentsByUserId(userId: String, limit: Int), fuelingOrdersById(id: String), fuelingEventsById(id: String, limit: Int), vendorFuelingOrdersById(id: String) per spec 5f; fueling_id type String (UUID, D6); SELECT only — no DDL/DML anywhere (R5); statements closed in finally; maximumPoolSize 5
+  - contracts: 5f
   - deps: T1
 - [x] T4 | owner: development/koog-engineer | artifact: client/deepseek/DeepSeekClient.kt, client/deepseek/DeepSeekModels.kt, client/deepseek/TurbofaAgent.kt | status: done | verified: ok
   - acceptance: TurbofaAgent (spec 5d — the "FuelingAgent" of the planning notes) implements chat(messages: List<ChatMessage>): String on AIAgent + singleRunStrategy (D1); history passed as one Prompt with system/user/assistant roles — no Koog session state (D2); tool registered from T1's JSON; tools list never empty — startup fails fast if no tool file (5c, R7); plain-text responses without a tool call work (R9); apiKey/model injected via constructor (no env reads in client code)
+  - contracts: 5b, 5c, 5d
   - deps: T2, T3
 - [x] T5 | owner: development/logging-engineer | artifact: logging/RequestLogger.kt | status: done | verified: ok
   - acceptance: RequestLogger interface per spec 5a (brunoRequest, deepSeekRequest, deepSeekResponse, toolCall, brunoResponse); line format "<date/time> <label>: <json body>" with pretty-printed JSON, no ellipsis (R8); labels exactly per R8; secrets redacted (DEEPSEEK_API_KEY, DB_PASSWORD, Authorization); logger com.eduai.turbofa.requestlog; logback.xml kept per D4 — single FILE appender logs/turbofa.log attached only to the R2 logger
+  - contracts: 5a
   - note (CTO): defect found by T10 (Authorization regex over-consumption leaked a second Bearer token, R8) — fix routed to logging-engineer 2026-09-23 (token class bounded to [^\s",}]+), regression tests added in T10, delta reviewed ok. Residual (non-blocking, unreachable in this app): quoted-token shape `Authorization: Bearer "sk-x"` stays visible — possible future backlog line
 - [x] T6 | owner: development/koog-engineer | artifact: client/deepseek/DeepSeekLoggingHttpClientFactory.kt | status: done | verified: ok
   - acceptance: factory wraps KtorKoogHttpClient.Factory; logs the request body (Transform phase) as "Request to Deepseek" and the response body (Receive phase, D3) as "Response from Deepseek" via RequestLogger (T5); json bodies
+  - contracts: 5a
   - deps: T4
 - [x] T7 | owner: development/kotlin-engineer | artifact: service/ChatService.kt, history/ChatHistoryStore.kt, history/InMemoryHistoryCache.kt, history/TextFileHistoryWriter.kt | status: done | verified: ok
   - acceptance: orchestration per spec 3.1: history.append(user) → agent.chat(messages); with fueling_id — embedded into the DeepSeek message (R9); without — normal dialogue, no tool call; history kept in cache + text file (5e); assistant records timestamped at DeepSeek response receipt (D5); no LLM HTTP calls and no SQL in this layer (R6/R5)
+  - contracts: 5d, 5e
   - note (CTO): integration gate lifted 2026-09-23 — T4 verified with the exact 5d signature; whole main source set compiles
 - [x] T8 | owner: development/api-client-engineer | artifact: routes/ChatRoutes.kt, config/AppConfig.kt | status: done | verified: ok
   - acceptance: POST /chat with DTO {prompt: String, fueling_id: String?} (D6) → {response: String}; missing prompt rejected; AppConfig reads env (DEEPSEEK_API_KEY, DEEPSEEK_MODEL, DB_*); log points 1 ("Request from Bruno to backend") and 5 ("Response from backend to Bruno") via RequestLogger (5a); no LLM/tool types in routes
+  - contracts: 5a
   - deps: T5
 - [x] T14 | owner: development/kotlin-engineer | artifact: settings.gradle.kts, gradle/wrapper/gradle-wrapper.properties, gradle/wrapper/gradle-wrapper.jar, gradlew, gradlew.bat | status: done | verified: ok
   - acceptance: settings.gradle.kts exists with rootProject.name = "turbofa" (single-module build per spec 3.3); wrapper files present (gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.jar, gradle/wrapper/gradle-wrapper.properties) with distributionUrl pinned to Gradle 9.6.0 (gradle-9.6.0-bin.zip) — that version runs the identical Kotlin 2.4.20 / Ktor 3.5.2 / jvmToolchain(23) build in the sibling project weather, satisfying the Kotlin 2.4.20 + JDK 23 toolchain constraint (Gradle 9.x is well past the 8.14+ KGP floor; Gradle 9.x supports JDK 23 toolchains); wrapper may be copied from weather/ (already pinned to 9.6.0) or generated with the local Gradle 7.6.4 wrapper task in a temp dir — 7.6.4 cannot evaluate this build itself (KGP 2.4.20 rejects Gradle 7.6.4); `./gradlew tasks` (or `./gradlew help`) succeeds — first run downloads the distribution; no changes to build.gradle.kts versions
+  - contracts: -
 - [x] T9 | owner: development/kotlin-engineer | artifact: Application.kt | status: done | verified: ok
   - acceptance: wiring per spec 3.3 (config ← db/client/history/tool ← service ← routes): AppConfig → DeepSeekClient/TurbofaAgent (apiKey+model injected) → ChatService → ChatRoutes; RequestLogger and FuelingDataSource wired; history file cleared on startup (R4); app starts via ./gradlew run
+  - contracts: 5d, 5e
   - acceptance2 (E4, D4 corrected): logs/turbofa.log truncated at startup before the first SLF4J logger initializes (top-level initializer above the log property) — the RollingFileAppender always appends
   - deps: T6, T7, T8, T14
 - [x] T10 | owner: quality/test-engineer | artifact: src/test/kotlin/com/eduai/turbofa/service/ChatServiceTest.kt, src/test/kotlin/com/eduai/turbofa/logging/RequestLoggerTest.kt | status: done | verified: ok
   - acceptance: ChatService tested with a mocked TurbofaAgent — with fueling_id the message carries it, without it no tool call; RequestLogger format (exact labels, json bodies) and redaction (key/password never appear); MockK + coroutines-test; no network, no DB; ./gradlew test green
+  - contracts: -
   - deps: T9
 - [x] T11 | owner: quality/test-engineer | artifact: src/test/kotlin/com/eduai/turbofa/db/FuelingDataSourceIntegrationTest.kt | status: done | verified: ok
   - acceptance: read-only integration test against the external stage DB (credentials from .env): the five queries of 5f return data for a sample fueling_id; fueling_id typed String (UUID); SELECT only
+  - contracts: -
   - deps: T9
 - [x] T12 | owner: quality/reviewer | artifact: - | status: done | verified: ok
   - acceptance: final scenario (read-only): run the app (./gradlew run) and send two requests — (a) prompt only, (b) prompt + fueling_id (UUID); verify: exactly five R2 log lines with json bodies, non-empty tools array, tool called for (b) and data from the three DBs aggregated into the summary, no secrets in logs, no DDL/DML in the codebase; verdict approve → CTO marks the backlog done; R1–R12, D1–D9, 5a–5f all satisfied
+  - contracts: -
   - deps: T10, T11
 - [x] T13 | owner: specification/skill-designer | artifact: .claude/agents/<team>/<agent>/skill.md, .claude/agents/development/api-client-engineer.md, .claude/agents/development/data-engineer.md, .claude/agents/quality/test-engineer.md, .claude/agents/specification/skill-designer.md | status: done | verified: ok
   - acceptance: one skill.md per agent (12 files) capturing craft, file ownership and cross-agent contracts from the spec; .claude/README.md rationale table kept current (R2)
+  - contracts: -
 - [x] T15 | owner: specification/spec-writer | artifact: docs/README.md | status: done | verified: ok
   - acceptance: README describes each documentation file in docs/ (requirements.md, project-specification.md, tasks.md), styled similarly to the weather project's docs README; stakeholder-requested 2026-09-23
+  - contracts: -
   - note: requested by the stakeholder during /process execution; executed by the CTO as a routed task
 - [x] T16 | owner: development/koog-engineer | artifact: src/main/kotlin/com/eduai/turbofa/client/deepseek/TurbofaAgent.kt | status: done | verified: ok
   - acceptance: SYSTEM_PROMPT expanded — respond in the same language as the user; plain text WITHOUT any markdown; 3-5 sentences covering fueling id (short form) and status, fuel type/volume/price per liter/total amount, payment type/method/status, station id/name/brand/location, fueling time range; only factual tool-result data, no analysis or recommendations
+  - contracts: 5d
   - note: requested by the stakeholder during post-delivery tuning
 - [x] T17 | owner: specification/skill-designer | artifact: .claude/agents (R2 label sync) | status: done | verified: ok
   - acceptance: old R2 labels ("Request to Deepseek", "Response from Deepseek", "Tool call") replaced with the from/to direction labels of contract 5a/D10 in every .claude/agents file that carried them; point counts updated five → six; repeat grep returns zero matches
+  - contracts: 5a
   - note: documentation synced with contract 5a/D10
 - [x] T18 | owner: specification/skill-designer | artifact: .claude/agents (token efficiency) | status: done | verified: ok
   - acceptance: minimal-comments constraint (R11) added to every agent definition except cto and reviewer; verdict-only gradle reading (--quiet / tail -20, error-section-only on failure) added to test-engineer, reviewer and cto; reviewer re-runs only the failing test (`./gradlew test --tests "ClassName.methodName"`); no application code and no specification changed
+  - contracts: -
   - note: requested by the stakeholder: radical token consumption reduction
 - [x] T19 | owner: specification/skill-designer | artifact: .code-style.md, .claude/agents/quality/code-style-reviewer.md, build.gradle.kts | status: done | verified: ok
   - acceptance: .code-style.md with the ten stakeholder sections (formatting, naming, imports, Kotlin specifics, error handling, DI, comments, functions, tests, tools); code-style-reviewer agent in quality/ following the frozen skeleton plus its skill.md (R2); ktlint + detekt plugins wired in build.gradle.kts and .editorconfig created (4 spaces, 120 chars); .claude/README.md quality roster + SKILL vs AGENT rationale + workflow updated; cto spawns the style gate on every diff; no application code changed
+  - contracts: -
   - note: requested by the stakeholder: unified code-style standard + enforcement agent; detekt green via detekt-baseline.xml (8 pre-existing findings baselined); ktlintCheck flags pre-existing violations in application code — left unfixed per the do-not-change-application-code constraint and excluded from `check` until a follow-up task makes the tree ktlint-clean
 - [x] T20 | owner: specification/skill-designer | artifact: .claude/agents/quality/{correctness,simplicity,git}-reviewer.md | status: done | verified: ok
   - acceptance: reviewer.md deleted (option A — no facade); correctness/simplicity/git reviewers created read-only (Read, Glob, Grep, Bash) with disjoint scopes plus their skill.md files (R2); cto spawns the chain sequentially and hands back on any findings; /process command updated; README roster + SKILL vs AGENT rationale + workflow updated; dangling reviewer references fixed in skill.md contract tables; no application code changed
+  - contracts: -
   - note: requested by the stakeholder: split the monolithic reviewer for deeper, specialized reviews
 - [x] T21 | owner: specification/architect | artifact: docs/schema.sql, docs/project-specification.md, .claude/agents (security constraints) | status: done | verified: ok
   - acceptance: security audit over LLM-context sources (client/tool), SYSTEM_PROMPT, tool descriptor, RequestLogger and .env.example — no credential leakage (clean); docs/schema.sql DDL for the five §6 tables with relationship comments, structure only, no DML, no credentials; spec Decision D11 (DDL-first) + §6.1 (Schema DDL) added; koog-engineer and data-engineer security constraints added; .code-style.md Security section added; no application code changed
+  - contracts: -
   - note: requested by the stakeholder: DDL-first approach and credential security audit
 - [x] T22 | owner: development/kotlin-engineer | artifact: src/main/kotlin/com/eduai/turbofa/di/{AppModule,SharedDI}.kt, Application.kt | status: done | verified: ok
   - acceptance: five Kodein modules (config/db/client/logging/service) with bind<T>() with singleton { } for every service; SharedDI with lateinit context + init(context); Application.module() builds the DI context, calls SharedDI.init and resolves dependencies (routing, history clear, shutdown hooks) via by di.instance<T>(); kodein-di-jvm:7.20.2 added to build.gradle.kts; tool call logic and RequestLogger untouched; ./gradlew build green
+  - contracts: -
   - note: requested by the stakeholder: DI via Kodein
 - [x] T23 | owner: development/kotlin-engineer | artifact: src/main/kotlin/com/eduai/turbofa/** (comment cleanup) | status: done | verified: ok
   - acceptance: all redundant comments removed across the project (AppModule.kt, SharedDI.kt, Application.kt, etc.); only comments on non-trivial logic remain
+  - contracts: -
   - deps: T22
   - note: requested by the stakeholder — eradicate the comment mania
+- [x] T24 | owner: development/data-engineer | artifact: db/Tables.kt, db/DataSourceFactory.kt, db/FuelingDataSource.kt, di/AppModule.kt | status: done | verified: ok
+  - acceptance: Exposed 0.56.0 (core/jdbc/java-time) wired; Tables.kt table objects per docs/schema.sql (structure only, no DDL); three HikariCP pools with an Exposed Database on each; the five 5f queries rewritten on the Exposed DSL with signatures and semantics unchanged (ORDER BY / LIMIT / jsonb-as-text preserved); FuelingDataSource receives DataSourceFactory via Kodein; integration test green with the same assertions; spec + data-engineer + .code-style.md + architect docs updated
+  - contracts: 5f
+  - note: requested by the stakeholder: migrate the data layer to the mandated Exposed ORM stack
+- [x] T25 | owner: specification/architect | artifact: docs/token-efficiency-audit.md | status: done | verified: ok
+  - acceptance: spawn-prompt structure documented from cto.md / process.md / §5a–5f / the T23 run; redundancies identified with examples; optimizations proposed with before/after; token estimates current vs optimized (~85% vs worst case, ~64% vs actual); implementation recommendations listed per owner; no agent definition or application code changed
+  - contracts: -
+  - note: requested by the stakeholder: audit inter-agent communication for token efficiency
   - note (CTO): ~157 comment lines removed across main sources (kotlin-engineer sweep + stakeholder-mandated pre-clean of di/ and Application.kt); review chain fully green — correctness (comment-only diff verified line-by-line, D4/D5/R5/secret contracts intact), simplicity (no dead declarations, no import/direction churn), git (ignore rules intact, no secrets/artifacts in committable tree), style (zero new violations; pre-existing ktlint debt unchanged). Residuals recorded for the Specification team: (a) tool/FuelingInfoTool PAYMENTS_LIMIT/EVENTS_LIMIT duplicate the FuelingDataSource caps — behavior-preserving consolidation candidate; (b) di/SharedDI.context is write-only; (c) the whole T18–T23 changeset is uncommitted — git-reviewer suggests atomic commits when committing; (d) ktlint debt follow-up already documented under T19
+- [x] T26 | owner: specification/skill-designer | artifact: .claude/agents/executive/cto.md, .claude/commands/process.md, .claude/agents/specification/task-planner.md, docs/tasks.md | status: done | verified: ok
+  - acceptance: cto.md and process.md spawn prompts carry contract IDs only (spec sections read by the subagent); token-efficient spawn template (~90-120 tokens) added to both; task-planner backlog format requires a contracts: sub-bullet; contracts: pinned for T1–T25; no application code and no other agent definitions changed
+  - contracts: -
+  - note: requested by the stakeholder: implement token efficiency optimizations from T25 audit
+- [x] T27 | owner: development/koog-engineer | artifact: client/ollama/{OllamaClient,OllamaTurbofaAgent}.kt, service/Provider.kt, service/ChatService.kt, routes/ChatRoutes.kt, di/AppModule.kt | status: done | verified: ok
+  - acceptance: OLLAMA_BASE_URL/OLLAMA_MODEL env vars (optional, defaults localhost:11434 + qwen3:8b); OllamaClient reuses the Koog DeepSeek client against Ollama's OpenAI-compatible /v1 endpoint (R6); OllamaTurbofaAgent delegates to KoogTurbofaAgent — same system prompt, tool set and singleRunStrategy; Provider enum (DEEPSEEK, OLLAMA) with default DEEPSEEK in the Bruno DTO (backward-compatible); ChatService routes per request (D12), fueling_id embedding unchanged; R2 log point 1 carries the provider field; unknown provider → 400; Kodein binds both agents with tags; ./gradlew build green; runtime-verified against a live Ollama (qwen3:8b) and DeepSeek
+  - contracts: 5a, 5d
+  - note: requested by the stakeholder: Ollama + multi-model routing
 
 ## Coverage
 
@@ -97,7 +136,7 @@ Artifact paths: `.kt` files are relative to `src/main/kotlin/com/eduai/turbofa/`
 | R8 five log points, json bodies | T5, T6, T8 |
 | R9 Bruno request contract and chain | T7, T8 |
 | R10 no unnecessary abstractions | T12 (reviewer verdict; also pinned in T4/T7 acceptance) |
-| R11 efficient token usage | T3 (LIMIT 10/20), T4, T18 |
+| R11 efficient token usage | T3 (LIMIT 10/20), T4, T18, T25 |
 | R12 docs → tasks → /process, verification-only, CTO-only statuses | T12 (process run); this file |
 | D1 AIAgent + singleRunStrategy | T4 |
 | D2 history as one Prompt, no Koog session | T4, T7 |

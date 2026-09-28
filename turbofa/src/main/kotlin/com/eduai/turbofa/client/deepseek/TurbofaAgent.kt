@@ -46,28 +46,10 @@ private const val SYSTEM_PROMPT =
         "method/payment system, payment status; station id/name, brand, location (region, " +
         "city); fueling time range from start to completion."
 
-/**
- * Spec 5d: the surface ChatService depends on. Tool calls execute inside the agent, so the service
- * never sees a Koog type; chat() receives the complete message list — ChatService already embedded
- * the fueling_id when the request carried one (5d, the single embedding point).
- */
 interface TurbofaAgent {
     suspend fun chat(messages: List<ChatMessage>): String
 }
 
-/**
- * Koog implementation of [TurbofaAgent]: an [AIAgent] on `singleRunStrategy` (D1) whose tool set is
- * loaded from the `*.json` files of `resources/tools` at startup (5c).
- *
- * `singleRunStrategy` makes the `get_fueling_info` call optional: a dialogue without a fueling_id
- * gets a plain-text reply, a question carrying one can trigger the tool (R9). The registry always
- * holds [FUELING_INFO_TOOL] — construction fails fast when no descriptor is present, so every
- * backend→DeepSeek request carries a non-empty `tools` array (R7).
- *
- * Stateless (D2): every [chat] call builds ONE fresh agent whose initial Prompt is the
- * response-style system instruction followed by the received dialogue; no Koog session state
- * survives a call — ChatHistoryStore is the single source of truth.
- */
 class KoogTurbofaAgent(
     private val executor: PromptExecutor,
     private val model: LLModel,
@@ -156,11 +138,6 @@ private fun parameterDescriptors(schema: JsonObject?): List<ToolParameterDescrip
         )
     }
 
-/**
- * JSON-schema `type` → Koog's parameter model for the descriptors of `resources/tools`. A missing
- * or unsupported type falls back to [ToolParameterType.String], the type Koog's DeepSeek schema
- * generator reports for plain text parameters, which is what the current descriptor uses (5b).
- */
 private fun parameterType(schema: JsonObject?): ToolParameterType = when (schema.stringField("type")) {
     "boolean" -> ToolParameterType.Boolean
     "integer" -> ToolParameterType.Integer

@@ -1,6 +1,6 @@
 package com.eduai.turbofa.history
 
-/** R4: the in-memory half of the history. Synchronized because Ktor serves requests on several threads. */
+// Synchronized: Ktor serves requests on several threads.
 class InMemoryHistoryCache {
     private val entries = mutableListOf<HistoryRecord>()
 

@@ -1,4 +1,3 @@
-// src/test/kotlin/com/eduai/turbofa/logging/RequestLoggerTest.kt
 package com.eduai.turbofa.logging
 
 import ch.qos.logback.classic.Level
@@ -15,14 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * Unit tests of the R2 event contract (5a, D10): the six labels, the single-line
- * "<date/time> <label>: <compact json>" format, and secret redaction.
- *
- * The tests use the internal formatEvent/redact hooks plus a throwaway capture logger, so no
- * event is ever written to the R2 appenders (console, logs/turbofa.log) and no logback config is
- * touched. Unit tests need no DB, no network and no .env.
- */
 class RequestLoggerTest {
 
     private val dateTime = "2026-09-23 21:58:14.001"
@@ -225,7 +216,6 @@ class RequestLoggerTest {
         assertEquals(1, event.lines().size, "single-line event (D10)")
     }
 
-    /** Runs [block] against a throwaway logger and returns the formatted events it emitted. */
     private fun capturedEvents(block: (RequestLogger) -> Unit): List<String> {
         val logbackLogger = LoggerFactory.getLogger(CAPTURE_LOGGER) as LogbackLogger
         logbackLogger.isAdditive = false

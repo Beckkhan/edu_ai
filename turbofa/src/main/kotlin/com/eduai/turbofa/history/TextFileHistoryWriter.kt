@@ -4,15 +4,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 
+internal val HISTORY_FILE: Path = Path.of("logs", "chat-history.txt")
+
 /**
- * R4/5e: the file half of the history — one line per record, plain text:
- *
- * ```
- * 2026-09-23T21:58:14.001Z assistant: The fueling succeeded ...
- * ```
- *
- * Newlines inside the content are escaped as `\n`, so one record always stays one line.
- * The file and its parent directory are created on the first write.
+ * File half of the history (R4/5e). One line per record with escaped newlines.
  */
 class TextFileHistoryWriter(private val file: Path) {
 

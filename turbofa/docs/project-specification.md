@@ -13,10 +13,12 @@ A backend that aggregates proliv data of one fueling by `fueling_id` and provide
 analysis of it via DeepSeek. Development is harness-driven: all implementation happens
 through `.claude` agents via `/process` — no hand-written code.
 
-- Bruno sends `{"prompt": "...", "fueling_id": <id>}` (fueling_id optional).
-  With fueling_id: the backend embeds it into the DeepSeek message; the chain is
-  Bruno → backend → DeepSeek → tool get_fueling_info(fueling_id) → external DB →
-  DeepSeek (summary) → backend → Bruno. Without fueling_id: normal dialogue, no
+- Bruno sends `{"prompt": "...", "fueling_id": <id>, "provider": "deepseek"}`
+  (fueling_id and provider optional; provider defaults to `deepseek`, the other
+  value is `ollama` — D12). With fueling_id: the backend embeds it into the
+  provider's message; the chain is
+  Bruno → backend → DeepSeek/Ollama → tool get_fueling_info(fueling_id) → external DB →
+  summary → backend → Bruno. Without fueling_id: normal dialogue, no
   tool call (R9).
 - The external Postgres is READ-ONLY: only SELECTs. No migrations, no schema
   creation, no writes of any kind (R5).
@@ -36,9 +38,10 @@ Versions from build.gradle.kts (no changes without a task):
 |-------|-----------|
 | Language | Kotlin 2.4.20, JVM toolchain 23 |
 | Server | Ktor 3.5.2 (server-netty, content-negotiation, kotlinx-json) |
-| LLM | **Koog 1.2.0 (mandatory for ALL DeepSeek interactions, R6)**: koog-agents, prompt-executor-deepseek-client 1.2.0-beta, http-client-ktor |
+| LLM | **Koog 1.2.0 (mandatory for ALL LLM interactions, R6)**: koog-agents, prompt-executor-deepseek-client 1.2.0-beta, http-client-ktor |
+| Local LLM | **Ollama (qwen3:8b)** via its OpenAI-compatible endpoint (/v1) through the same Koog client — provider per request (D12) |
 | Serialization | kotlinx-serialization-json 1.11.0 |
-| DB access | Plain JDBC (postgresql 42.7.7) + HikariCP 6.2.1 — read-only, external |
+| DB access | Exposed ORM 0.56.0 on HikariCP 6.2.1 (postgresql 42.7.7) — read-only, external |
 | Logging | SLF4J + logback-classic 1.6.3 (RollingFileAppender forces append=true — E4; R2 on CONSOLE + FILE — D10) |
 | Tests | JUnit 5 (kotlin-test), MockK 1.14.11, kotlinx-coroutines-test 1.8.1 |
 | Infra | No docker-compose — the database is external and already running |
@@ -114,7 +117,7 @@ src/main/kotlin/com/eduai/turbofa/
 ├── tool/FuelingInfoTool.kt   # Koog tool handler → data-engineer queries (koog-engineer)
 ├── service/ChatService.kt    # orchestration glue (kotlin-engineer)
 ├── history/                  # ChatHistoryStore, cache, text file (kotlin-engineer)
-├── db/                       # HikariCP + read-only queries (data-engineer)
+├── db/                       # HikariCP + Exposed read-only queries (data-engineer)
 │   ├── DataSourceFactory.kt  #   one DataSource per database (D7)
 │   └── FuelingDataSource.kt  #   the five SELECTs of 5f
 └── logging/RequestLogger.kt  # R2 logger interface + impl (logging-engineer)
@@ -133,7 +136,7 @@ Dependency direction: config ← db/client/history/tool ← service ← routes.
 | api-client-engineer | Bruno-facing API: ChatRoutes DTOs (prompt + optional fueling_id as string, D6), AppConfig incl. per-DB URL derivation (D7), content-negotiation wiring, log points 1/5 |
 | logging-engineer | RequestLogger interface + SLF4J/logback implementation, exact R8 format (single-line, compact), secret redaction, logback.xml (D10: CONSOLE + FILE; freshness is NOT a logback feature — see 5a) |
 | kotlin-engineer | Application glue: ChatService (incl. fueling_id embedding into the outgoing message, R9 — the single embedding point), history (ChatHistoryStore + cache + text file cleared on restart), Application.kt wiring + startup truncation of logs/turbofa.log (E4) |
-| data-engineer | Read-only JDBC: DataSourceFactory (three DataSources, D7), FuelingDataSource (the queries of 5f, SELECT only) |
+| data-engineer | Read-only data layer: DataSourceFactory (three HikariCP pools + three Exposed Databases, D7), Tables.kt (schema objects), FuelingDataSource (the 5f queries, SELECT only) |
 | test-engineer | Unit tests: agent contract, ChatService flow (with/without fueling_id), RequestLogger format/redaction, history, DTO validation |
 | reviewer | Diff review gate for every task; verifies no DDL/DML anywhere (R5) |
 
@@ -257,8 +260,9 @@ The agent maps those role strings to Koog's SystemMessage/UserMessage/AssistantM
 Three databases on the same server (discovered, §6). AppConfig derives three JDBC URLs
 from DB_HOST / DB_PORT / DB_USER / DB_PASSWORD + fixed database names `fueling`,
 `payment`, `vendors` (D7); the .env `DB_URL` (which points at the `postgres` admin
-database) is not used for domain data (E3). One HikariCP DataSource per database,
-maximumPoolSize 5 each, plain JDBC PreparedStatements, closed in finally blocks.
+database) is not used for domain data (E3). One HikariCP pool per database,
+maximumPoolSize 5 each, with an Exposed Database on top; the five queries run through
+Exposed's DSL (SELECT only, R5), pools closed on shutdown (T24).
 
 `FuelingDataSource` executes, in order (all SELECT only):
 
@@ -275,7 +279,8 @@ maximumPoolSize 5 each, plain JDBC PreparedStatements, closed in finally blocks.
 
 Return types (pinned): queries 1/3/5 return `Map<String, Any?>?` — null when the row is
 absent; queries 2/4 return `List<Map<String, Any?>>`. A row is an ordered column-label →
-JDBC-value map (no domain classes, R10; jsonb unwrapped to text, other values opaque so
+value map built from the Exposed ResultRow (T24; no domain classes, R10; jsonb columns
+declared as text so they arrive unwrapped, other values opaque so
 the heterogeneous epoch timestamps stay as-is). `FuelingInfoTool` serializes them as one
 JSON object keyed by the table names — `{"fuelings": …, "payments": […], "fueling_orders":
 …, "fueling_events": […], "vendor_fueling_orders": …}` — an absent single row becomes JSON
@@ -419,6 +424,18 @@ structures for query generation but has no direct DB access.
 Alternatives considered: (a) passing credentials in the system prompt (rejected —
 security risk); (b) text-to-SQL with direct DB access (rejected — violates the
 read-only constraint R5).
+
+**D12 — Multi-provider routing at the ChatService layer.**
+Decision: the Bruno request carries an optional `provider` field (`"deepseek"`
+default, `"ollama"` for the local model); ChatService selects the TurbofaAgent
+implementation for the request. The routing decision is made in code (DTO →
+service), never by the LLM.
+Why: the stakeholder wants local vs external per request; both providers share the
+same tool set, system prompt and history contract (5b/5c/5d/5e), so only the
+transport/executor differs. Ollama is reached through its OpenAI-compatible
+endpoint via the same Koog client (R6 holds for both providers).
+Alternatives considered: provider chosen by the LLM (rejected — non-deterministic);
+separate endpoints (rejected — one Bruno contract, R10).
 
 ## 8. Escalations and execution feedback (recorded, not silently "fixed")
 

@@ -11,26 +11,6 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 
-/**
- * T11: integration test of the five SELECT queries of spec 5f (R5, R7) against the external stage
- * DB, using the real wiring of T9 — [AppConfig] (credentials from `.env`/environment, fail-fast)
- * feeds [DataSourceFactory], whose three pools feed [FuelingDataSource]. Nothing is mocked: the
- * test proves the actual JDBC path, live PostgreSQL error behavior and the TEXT-UUID binding of D6.
- *
- * Read-only (R5): every call is one of the five SELECT statements; the test issues no DDL, no DML
- * and no `INSERT`/`UPDATE`/`DELETE` — not even a rejected one. The only assertion about writes is
- * the client-side `isReadOnly` flag of the pools, which executes no SQL.
- *
- * Requires network access to the stage DB plus the `DB_*` values in `.env` (or the environment);
- * like the application, it fails fast when a credential is missing. The pools are closed in
- * [tearDown] so the Gradle test JVM exits without Hikari housekeeping threads.
- *
- * Sample ids come from the T3 verification of the 2026-09-23 schema discovery (§6):
- * - [FULL_CHAIN_ID] appears in all three databases (payments via its `user_id` 2433);
- * - [EMPTY_PAYMENTS_ID] is a fueling whose user has zero payments — the empty-list case of D8;
- * - [VENDOR_ONLY_ID] exists only in `vendor_fueling_orders`, the best-effort subset of D9;
- * - a fresh random UUID covers the "unknown id" path of all five queries.
- */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FuelingDataSourceIntegrationTest {
 
@@ -47,11 +27,7 @@ class FuelingDataSourceIntegrationTest {
             user = config.dbUser,
             password = config.dbPassword,
         )
-        fuelingDataSource = FuelingDataSource(
-            fuelingDatabase = dataSources.fuelingDatabase,
-            paymentDatabase = dataSources.paymentDatabase,
-            vendorsDatabase = dataSources.vendorsDatabase,
-        )
+        fuelingDataSource = FuelingDataSource(dataSources)
     }
 
     @AfterAll
@@ -167,15 +143,15 @@ class FuelingDataSourceIntegrationTest {
         // The read-only guarantee of spec 5f (readOnlyMode=always) surfaces on the connection; this
         // check executes no SQL and the test itself never writes.
         listOf(
-            "fueling" to dataSources.fuelingDatabase,
-            "payment" to dataSources.paymentDatabase,
-            "vendors" to dataSources.vendorsDatabase,
+            "fueling" to dataSources.fuelingPool,
+            "payment" to dataSources.paymentPool,
+            "vendors" to dataSources.vendorsPool,
         ).forEach { (database, pool) ->
             pool.connection.use { connection ->
                 assertTrue(connection.isReadOnly, "$database pool hands out read-only connections (R5)")
             }
         }
-        assertEquals(DataSourceFactory.MAX_POOL_SIZE, dataSources.fuelingDatabase.maximumPoolSize)
+        assertEquals(DataSourceFactory.MAX_POOL_SIZE, dataSources.fuelingPool.maximumPoolSize)
     }
 
     /** Asserts that the non-null `created_at` values of [rows] are in descending order. */

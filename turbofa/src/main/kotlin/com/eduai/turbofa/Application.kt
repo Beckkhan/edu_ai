@@ -1,14 +1,15 @@
 package com.eduai.turbofa
 
 import com.eduai.turbofa.client.deepseek.DeepSeekClient
+import com.eduai.turbofa.config.AppConfig
 import com.eduai.turbofa.db.DataSourceFactory
-import com.eduai.turbofa.di.SharedDI
 import com.eduai.turbofa.di.clientModule
 import com.eduai.turbofa.di.configModule
 import com.eduai.turbofa.di.dbModule
 import com.eduai.turbofa.di.loggingModule
 import com.eduai.turbofa.di.serviceModule
 import com.eduai.turbofa.history.ChatHistoryStore
+import com.eduai.turbofa.history.HISTORY_FILE
 import com.eduai.turbofa.logging.RequestLogger
 import com.eduai.turbofa.routes.ChatJson
 import com.eduai.turbofa.routes.chatRoutes
@@ -25,6 +26,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import org.kodein.di.DI
+import org.kodein.di.direct
 import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 
@@ -32,22 +34,10 @@ private const val HOST = "0.0.0.0"
 private const val PORT = 8080
 
 /**
- * R4/5e history text file. Deliberately NOT logs/turbofa.log: that file belongs exclusively to the
- * R2 logback appender (D4) and is made fresh by [FRESH_R2_LOG_FILE], below.
+ * D4/E4: logback 1.6.3 hard-forces append=true, so the file is truncated here, ABOVE
+ * [log] — later truncation would hand TimeBasedRollingPolicy a stale lastModified.
  */
-internal val HISTORY_FILE: Path = Path.of("logs", "chat-history.txt")
-
-/**
- * D4 (corrected 2026-09-23, E4): logback 1.6.3 hard-forces append=true on its RollingFileAppender —
- * `<append>false</append>` is silently inert — so a fresh per-run log file cannot come from
- * logback.xml and is made fresh here instead, mirroring the R4 history-file clear (5a).
- *
- * Declared ABOVE [log] on purpose: file-level properties initialize in declaration order, so this
- * truncation runs before the first LoggerFactory call, i.e. before logback opens the file.
- * Truncating later (in main() or module()) would hand TimeBasedRollingPolicy the stale file's
- * lastModified as its initial rolling period, rolling the emptied file over the previous day's
- * archive name on the first R2 event.
- */
+@Suppress("unused")
 private val FRESH_R2_LOG_FILE: Unit = run {
     val logFile = Path.of("logs", "turbofa.log")
     logFile.parent?.let(Files::createDirectories)
@@ -61,11 +51,6 @@ fun main() {
     embeddedServer(Netty, port = PORT, host = HOST, module = Application::module).start(wait = true)
 }
 
-/**
- * Pure assembly (R10): no SQL, no LLM call and no R2 log line is emitted here. Failures
- * during construction (a missing credential, an unreachable DB, an empty tool descriptor
- * set) abort the startup instead of surfacing on the first Bruno request.
- */
 fun Application.module() {
     // The Bruno-facing JSON policy T8 exports; the same instance the route encodes with, so the
     // body Bruno receives is exactly the body logged as R8 log point 5.
@@ -78,7 +63,9 @@ fun Application.module() {
         import(loggingModule)
         import(serviceModule)
     }
-    SharedDI.init(di)
+
+    // A missing credential must abort before any startup file I/O.
+    di.direct.instance<AppConfig>()
 
     // History (R4, 5e): cleared on restart before the first request.
     val history: ChatHistoryStore by di.instance()

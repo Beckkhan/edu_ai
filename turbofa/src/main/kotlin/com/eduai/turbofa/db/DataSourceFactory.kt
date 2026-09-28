@@ -2,15 +2,11 @@ package com.eduai.turbofa.db
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import org.jetbrains.exposed.sql.Database
 
 /**
- * One read-only HikariCP pool per domain database of spec 5f (D7): `fueling`, `payment` and
- * `vendors`.
- *
- * Pools are created eagerly, so a wrong URL or credential fails at startup instead of on the first
- * query. `readOnlyMode=always` makes every session read-only on the server side (R5), a guarantee
- * Hikari's own [HikariConfig.setReadOnly] flag cannot give: that flag stays client-side with the
- * PostgreSQL driver.
+ * One read-only HikariCP pool per domain database (D7) with an Exposed Database on each.
+ * Uses readOnlyMode=always for server-side read-only guarantee.
  */
 class DataSourceFactory(
     fuelingJdbcUrl: String,
@@ -20,17 +16,22 @@ class DataSourceFactory(
     private val password: String,
     private val maxPoolSize: Int = MAX_POOL_SIZE,
 ) : AutoCloseable {
+    val fuelingPool: HikariDataSource = pool(fuelingJdbcUrl)
 
-    val fuelingDatabase: HikariDataSource = pool(fuelingJdbcUrl)
+    val paymentPool: HikariDataSource = pool(paymentJdbcUrl)
 
-    val paymentDatabase: HikariDataSource = pool(paymentJdbcUrl)
+    val vendorsPool: HikariDataSource = pool(vendorsJdbcUrl)
 
-    val vendorsDatabase: HikariDataSource = pool(vendorsJdbcUrl)
+    val fuelingDatabase: Database = Database.connect(fuelingPool)
+
+    val paymentDatabase: Database = Database.connect(paymentPool)
+
+    val vendorsDatabase: Database = Database.connect(vendorsPool)
 
     override fun close() {
-        fuelingDatabase.close()
-        paymentDatabase.close()
-        vendorsDatabase.close()
+        fuelingPool.close()
+        paymentPool.close()
+        vendorsPool.close()
     }
 
     private fun pool(jdbcUrl: String): HikariDataSource {
@@ -41,6 +42,7 @@ class DataSourceFactory(
         config.driverClassName = POSTGRES_DRIVER
         config.maximumPoolSize = maxPoolSize
         config.isReadOnly = true
+        // readOnlyMode=always is server-side (R5); Hikari's isReadOnly flag alone stays client-side.
         config.addDataSourceProperty("readOnlyMode", "always")
         return HikariDataSource(config)
     }

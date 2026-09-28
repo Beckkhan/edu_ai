@@ -20,14 +20,15 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
   5. `SELECT * FROM vendor_fueling_orders WHERE fueling_id = ?` (vendors DB) —
      best-effort: empty results are normal (0/5 sampled), never a failure (D9). Do not
      join via `fuelings.vendor_fueling_order_id` (0 matches).
-- Three databases → three HikariCP DataSources (`fueling`, `payment`, `vendors`),
-  `maximumPoolSize = 5` each; JDBC URLs from DB_HOST/DB_PORT/DB_USER/DB_PASSWORD plus
+- Three databases → three HikariCP pools with an Exposed `Database` on each (T24),
+  `maximumPoolSize = 5` per pool; JDBC URLs from DB_HOST/DB_PORT/DB_USER/DB_PASSWORD plus
   the fixed database names (D7). The `.env` DB_URL points at the admin database — do not
   use it for domain data (E3).
-- `fueling_id` is a String UUID everywhere (§6, D6); PreparedStatements only; statements
-  (and connections) closed in `finally` blocks.
+- `fueling_id` is a String UUID everywhere (§6, D6); queries run through the Exposed DSL
+  inside `transaction { }` — no manual PreparedStatement/ResultSet handling.
 - Rows return as raw column maps serialized as-is — no domain classes (R10); timestamps
-  stay opaque (the sources mix numeric epoch, bigint, and text); LIMITs serve R11.
+  stay opaque (the sources mix numeric epoch, bigint, and text); jsonb columns are
+  declared `text` in Tables.kt so they arrive as their JSON string (5f); LIMITs serve R11.
 - R5 invariant: no DDL, no DML, no migrations, no schema creation, ever. Bash/psql use is
   read-only discovery and verification only.
 - Signatures locked by T3: `fuelingById(id: String)`, `paymentsByUserId(userId: String,
@@ -40,8 +41,9 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 
 | Path | Notes |
 |------|-------|
-| `db/DataSourceFactory.kt` | three HikariCP pools, driver `org.postgresql.Driver` (T3) |
-| `db/FuelingDataSource.kt` | the five SELECTs of 5f (T3) |
+| `db/Tables.kt` | Exposed table objects per docs/schema.sql, structure only (T24) |
+| `db/DataSourceFactory.kt` | three HikariCP pools + three Exposed Databases, driver `org.postgresql.Driver` (T3, T24) |
+| `db/FuelingDataSource.kt` | the five SELECTs of 5f via the Exposed DSL (T3, T24) |
 | external Postgres | read-only; never written from any code path |
 
 ## Cross-agent contracts
@@ -55,8 +57,8 @@ docs/project-specification.md §3.3, §4, §5; docs/tasks.md).
 
 ## Verification hooks
 
-- Grep `db/` for `INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE` → none.
-- Five functions exist with String `id` parameters; pool size 5; statements closed in
-  `finally`.
+- Grep `db/` for `INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|SchemaUtils` → none.
+- Five functions exist with String `id` parameters; pool size 5; no raw
+  PreparedStatement/ResultSet code remains in db/.
 - T11 integration test runs read-only against the stage DB and returns data for a sample
   UUID.

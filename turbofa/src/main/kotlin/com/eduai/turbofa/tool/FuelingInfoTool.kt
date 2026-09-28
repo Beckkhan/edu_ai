@@ -22,13 +22,6 @@ data class GetFuelInfoArgs(
     @SerialName("fueling_id") val fuelingId: String,
 )
 
-/**
- * Koog tool handler for get_fueling_info (R7): aggregates the data of one fueling from the
- * fueling / payment / vendors databases through the read-only queries of [FuelingDataSource]
- * (spec 5f) and returns it as compact JSON for DeepSeek to summarize. The descriptor is passed in
- * as loaded from resources/tools/get_fueling_info.json, so the handler reports exactly the schema
- * the model was given (5b).
- */
 class FuelingInfoTool(
     private val dataSource: FuelingDataSource,
     private val requestLogger: RequestLogger,
@@ -53,10 +46,10 @@ class FuelingInfoTool(
             // Without user_id (no fueling row) the payments query cannot be scoped — null, not [].
             put(
                 "payments",
-                userId?.let { rowsToJson(dataSource.paymentsByUserId(it, PAYMENTS_LIMIT)) } ?: JsonNull,
+                userId?.let { rowsToJson(dataSource.paymentsByUserId(it)) } ?: JsonNull,
             )
             put("fueling_orders", rowToJson(dataSource.fuelingOrdersById(args.fuelingId)))
-            put("fueling_events", rowsToJson(dataSource.fuelingEventsById(args.fuelingId, EVENTS_LIMIT)))
+            put("fueling_events", rowsToJson(dataSource.fuelingEventsById(args.fuelingId)))
             // D9: best-effort — the table covers only a subset of fuelings, a missing row is normal
             put("vendor_fueling_orders", rowToJson(dataSource.vendorFuelingOrdersById(args.fuelingId)))
         }.toString()
@@ -71,10 +64,6 @@ class FuelingInfoTool(
     override fun encodeResultToString(result: String, serializer: JSONSerializer): String = result
 
     private companion object {
-        // D8's payment list and the event list are capped to keep the tool payload small (R11).
-        const val PAYMENTS_LIMIT = 10
-        const val EVENTS_LIMIT = 20
-
         fun rowToJson(row: Map<String, Any?>?): JsonElement =
             if (row == null) JsonNull else JsonObject(row.mapValues { (_, value) -> valueToJson(value) })
 

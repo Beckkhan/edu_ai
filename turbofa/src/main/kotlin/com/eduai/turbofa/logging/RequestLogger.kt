@@ -6,16 +6,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * R2 logging contract (docs/project-specification.md, contract 5a).
- *
- * The six call sites of spec 3.2 emit one single-line event each:
- * "<date/time (yyyy-MM-dd HH:mm:ss.SSS)> <label>: <compact json body>" — never
- * pretty-printed, never an ellipsis, never a truncated body (R8). Events go to BOTH
- * sinks: the CONSOLE (R2 console appender) and logs/turbofa.log (R2 file appender),
- * both attached to "com.eduai.turbofa.requestlog" with pattern %msg%n — the event
- * carries its own date/time (logback.xml, D10).
- *
- * Secrets (Authorization, DEEPSEEK_API_KEY, DB_PASSWORD) never appear in any event.
+ * R2 logger interface. Six log points (5a): brunoRequest, deepSeekRequest,
+ * deepSeekResponse, postgresRequest, postgresResponse, brunoResponse.
  */
 interface RequestLogger {
     fun brunoRequest(json: String)
@@ -30,11 +22,6 @@ interface RequestLogger {
     fun brunoResponse(json: String)
 }
 
-/**
- * SLF4J/logback implementation of [RequestLogger]; [secretValues] are masked in addition to the
- * always-masked DEEPSEEK_API_KEY and DB_PASSWORD environment values. [loggerName] must match the
- * appender attachment in logback.xml (D10).
- */
 class Slf4jRequestLogger(
     loggerName: String = LOGGER_NAME,
     secretValues: Collection<String> = emptyList(),
@@ -64,10 +51,8 @@ class Slf4jRequestLogger(
     }
 
     /**
-     * One R2 event: "<date/time> <label>: <json body>" (D10). Every call site already hands compact
-     * JSON (kotlinx serialization), so the body is written redacted and verbatim — no
-     * parse/re-serialize round-trip, and a body that is not valid JSON is still written instead of
-     * dropped (R8 forbids ellipses and truncation).
+     * One R2 event. The body is written verbatim — no parse/re-serialize round-trip, and a
+     * body that is not valid JSON is still written instead of dropped (R8).
      */
     internal fun formatEvent(dateTime: String, label: String, json: String): String =
         "$dateTime $label: " + redact(json)
@@ -84,7 +69,6 @@ class Slf4jRequestLogger(
         /** Name the R2 console and file appenders are attached to in logback.xml (D10). */
         const val LOGGER_NAME = "com.eduai.turbofa.requestlog"
 
-        /** D10: "yyyy-MM-dd HH:mm:ss.SSS", local — every event starts with its own date/time. */
         const val TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS"
 
         // Labels exactly as R8 / spec 3.2 spell them (from/to direction, D10).
@@ -108,10 +92,8 @@ class Slf4jRequestLogger(
         )
 
         /**
-         * Header form without JSON quotes, e.g. "Authorization: Bearer sk-...". The token class
-         * stops at whitespace, quotes, commas and braces so it never swallows JSON structure or
-         * a following "Bearer" keyword: every occurrence is masked independently, and the
-         * separate [BEARER_TOKEN] pass still fires for the rest of the text.
+         * Header form without JSON quotes. The token class stops at whitespace, quotes, commas
+         * and braces so it never swallows JSON structure or a following "Bearer" keyword.
          */
         private val AUTHORIZATION_VALUE = Regex(
             """(authorization\s*[:=]\s*)(?:bearer\s+)?([^\s",}]+)""",

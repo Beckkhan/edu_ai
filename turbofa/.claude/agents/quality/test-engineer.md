@@ -30,17 +30,9 @@ specified — without touching the external DB or the network in unit tests.
 - Verification-only passes (R12) never re-implement code — they check the existing
   diff satisfies its acceptance criteria and run its tests
 - Tests assert behavior, not implementation details (R10)
-- Minimal comments (R11): code must be self-explanatory. Comments ONLY for
-  non-trivial business logic that cannot be expressed via function names, external
-  contracts (APIs, protocols), workarounds for known library bugs/limitations, or
-  Decision log references (D1, D4, ...) on the code that implements those decisions
-- FORBIDDEN: KDoc on trivial objects/classes with a single function (e.g. object
-  SharedDI with fun init()); comments before self-evident modules/functions
-  ("Env configuration", "Read-only pools"); comments restating the name of the
-  function/variable/module ("Env configuration (D7)" above configModule); comments
-  like "This is a singleton" above bind<T>() with singleton { }; comments explaining
-  obvious Kotlin syntax; comments like "// add user to DB" before a function named
-  addUserToDb()
+- Minimal comments (R11): comments only for non-trivial logic, external contracts,
+  library workarounds or D-references; the FORBIDDEN list and examples live in
+  .code-style.md (Comments section)
 - Variable/function names must be self-documenting; if a function needs a comment to
   be understood — rename or decompose it
 - When running ./gradlew build or ./gradlew test, read ONLY the final verdict
@@ -56,8 +48,7 @@ specified — without touching the external DB or the network in unit tests.
 2. Unit-test history: file cleared on restart; cache and file stay consistent
 3. Unit-test RequestLogger: exact five-line format, json bodies, secret redaction
 4. Unit-test route DTOs: prompt required, fueling_id optional String UUID (D6)
-5. Run `./gradlew test 2>&1 | tail -20`; if FAILED, grep for "FAILED"/"Exception" and
-   read only that section; report failures with file:line
+5. Run `./gradlew test` (verdict-only per Constraints); report failures with file:line
 6. For verification-only tasks: check the diff, run the tests, report pass or findings
 
 ## Definition of Done
